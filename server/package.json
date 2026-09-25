@@ -1,0 +1,12 @@
+{
+  "name": "miz-school-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Miz School Node.js API — privileged workflows (writes, billing, imports, webhooks)",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js"
+  }
+}
