@@ -4,8 +4,8 @@
 export const MODULES = {
   dashboard: { label: 'Dashboard', icon: 'home' },
   schools: { label: 'Schools', icon: 'building' },
-  subscriptions: { label: 'Subscriptions & Billing', icon: 'receipt' },
-  plans: { label: 'Plans & Pricing', icon: 'tag' },
+  subscriptions: { label: 'Subscriptions', icon: 'receipt' },
+  plans: { label: 'Plans', icon: 'tag' },
   onboarding: { label: 'Website Import', icon: 'globe' },
   insights: { label: 'Smart Insights', icon: 'trend' },
   branches: { label: 'Branches', icon: 'building' },
