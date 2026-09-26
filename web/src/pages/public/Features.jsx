@@ -47,9 +47,9 @@ export default function Features() {
   return (
     <div style={{ background: '#fff' }}>
       <PublicNav />
-      <section className="hero hero-dark">
+      <section className="hero hero-dark hero-photo" style={{ backgroundImage: "url(./img/arrival.jpg)", backgroundPosition: "center 40%" }}>
         <div className="pw" style={{ padding: '64px 20px 56px', maxWidth: 900 }}>
-          <span className="eyebrow-dark"><span className="live-dot" /> Why Miz School</span>
+          <span className="eyebrow-dark">Why Miz School</span>
           <h1 style={{ fontSize: 42, lineHeight: 1.12, marginTop: 16 }}>One branded platform that runs the whole school — and keeps every parent informed.</h1>
           <p className="hero-lead" style={{ marginTop: 14 }}>
             Miz School replaces paper registers, scattered WhatsApp groups and five disconnected apps with one system that the office, teachers, parents, students, drivers and management actually use every day — for a school of 50 students or a group of 50,000.

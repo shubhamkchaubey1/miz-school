@@ -38,10 +38,10 @@ export default function Landing() {
   return (
     <div style={{ background: '#fff' }}>
       <PublicNav />
-      <section className="hero hero-dark">
+      <section className="hero hero-dark hero-photo" style={{ backgroundImage: "url(./img/classroom.jpg)" }}>
         <div className="pw hero-in">
           <div className="stack" style={{ gap: 20 }}>
-            <span className="eyebrow-dark"><span className="live-dot" /> Smart school platform · LKG to Class 12</span>
+            <span className="eyebrow-dark">Smart school platform · LKG to Class 12</span>
             <h1>Run your entire school from <span className="hl">one app</span> — under your school’s own name.</h1>
             <p className="hero-lead">
               Admissions, attendance, homework, exams, fees, transport and parent communication on WhatsApp — for principals, teachers, parents, students and staff. From a 50-student school to a 50,000-student group.
@@ -78,6 +78,31 @@ export default function Landing() {
               ['clip-list', 'amber', 'Teachers buried in paperwork', 'Registers & report cards → one tap and auto-calculated.'],
               ['bus', 'teal', 'Safety worries', 'No idea where the bus is → live map and OTP-verified pickup.']].map(([ic, tone, t, d]) => (
               <div key={t} className="card card-b tone-card" style={{ '--t': TONES[tone][1], '--tb': TONES[tone][0] }}><IconTile icon={ic} tone={tone} size={44} iconSize={22} /><h3 style={{ marginTop: 12, fontSize: 16 }}>{t}</h3><p className="small muted" style={{ marginTop: 6 }}>{d}</p></div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section day-sec">
+        <div className="pw stack" style={{ gap: 24 }}>
+          <div className="row between wrap" style={{ alignItems: 'flex-end' }}>
+            <div style={{ maxWidth: 640 }}>
+              <div className="kicker">A school day on Miz School</div>
+              <h2 className="title" style={{ marginTop: 8 }}>Every moment reaches the right person</h2>
+            </div>
+            <p className="muted" style={{ maxWidth: 380 }}>No calls, no registers, no lost diary notes. The school works as usual — Miz School keeps everyone informed.</p>
+          </div>
+          <div className="day-grid">
+            {[['arrival', '7:40 am', 'Bus reaches school', 'Driver marks boarding. Parents get “Aarav reached school” on WhatsApp and the app.', 'bus'],
+              ['classroom', '9:10 am', 'Attendance & homework', 'One tap in class. Absent alerts go out at once; homework lands in every parent’s diary.', 'clip-check'],
+              ['preprimary', '11:30 am', 'LKG daily diary', 'Meals, nap, mood and a photo of today’s activity — no exams, just skills tracked gently.', 'palette']].map(([img, time, t, d, ic]) => (
+              <figure key={img} className="day-card">
+                <div className="day-img"><img src={`./img/${img}.jpg`} alt={t} loading="lazy" width="1512" height="791" /><span className="day-time">{time}</span></div>
+                <figcaption>
+                  <div className="row" style={{ gap: 10 }}><IconTile icon={ic} size={34} iconSize={17} /><h3 style={{ fontSize: 17 }}>{t}</h3></div>
+                  <p className="small muted" style={{ marginTop: 8 }}>{d}</p>
+                </figcaption>
+              </figure>
             ))}
           </div>
         </div>
