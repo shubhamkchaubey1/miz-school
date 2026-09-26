@@ -2,11 +2,17 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { loadSchoolData, localSchoolData } from '../data/api.js';
 
 const LIVE = import.meta.env.VITE_LIVE_DATA === 'true';
-import { roleByKey } from '../config/roles.js';
+import { roleByKey, ROLES } from '../config/roles.js';
 import { todayISO } from './derive.js';
 
 const Ctx = createContext(null);
 export const useSchool = () => useContext(Ctx);
+
+export const defaultAccess = () => Object.fromEntries(ROLES.map((r) => [r.key, r.nav.flatMap(([, items]) => items)]));
+function loadAccess() {
+  try { const v = JSON.parse(localStorage.getItem('miz-access') || 'null'); if (v) return { ...defaultAccess(), ...v }; } catch { /* storage unavailable */ }
+  return defaultAccess();
+}
 
 const byId = (rows) => Object.fromEntries(rows.map((r) => [r.id, r]));
 
@@ -23,6 +29,8 @@ export function SchoolProvider({ slug, role, children }) {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [childIdx, setChildIdx] = useState(0);
+  const [access, setAccessState] = useState(loadAccess);
+  const setAccess = useCallback((next) => { setAccessState(next); try { localStorage.setItem('miz-access', JSON.stringify(next)); } catch { /* ignore */ } }, []);
   const [trip, setTrip] = useState({ status: 'idle', stopIndex: 0, boarded: {}, log: [] });
 
   useEffect(() => {
@@ -78,6 +86,8 @@ export function SchoolProvider({ slug, role, children }) {
       warden: { name: data.hostels[0].warden_name, title: 'Hostel Warden' },
       canteen: { name: r.person, title: r.title },
       scanner: { name: r.person, title: r.title },
+      librarian: { name: r.person, title: r.title },
+      accountant: { name: r.person, title: r.title },
       super_admin: { name: r.person, title: 'Miz School Platform' },
     };
     return { role: r, ...(map[role] || map.school_admin) };
@@ -86,6 +96,8 @@ export function SchoolProvider({ slug, role, children }) {
   // ── Demo mutations (session only; production writes go through the Node API) ──
   const update = useCallback((key, fn) => setData((d) => ({ ...d, [key]: fn(d[key]) })), []);
   const actions = useMemo(() => ({
+    /** Generic session-only update for any table: actions.update('books', rows => ...) */
+    update,
     saveAttendance(sectionId, date, marks) {
       update('attendance', (rows) => {
         const rest = rows.filter((a) => !(a.section_id === sectionId && a.date === date));
@@ -122,6 +134,6 @@ export function SchoolProvider({ slug, role, children }) {
     setBranding(patch) { setData((d) => { const school = { ...d.school, ...patch }; applyBrand(school); return { ...d, school }; }); },
   }), [update]);
 
-  const value = { slug, role, data, idx, persona, actions, notify, toast, error, childIdx, setChildIdx, trip, setTrip };
+  const value = { access, setAccess, slug, role, data, idx, persona, actions, notify, toast, error, childIdx, setChildIdx, trip, setTrip };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
