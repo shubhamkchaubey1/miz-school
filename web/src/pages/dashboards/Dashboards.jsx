@@ -439,15 +439,14 @@ function SuperDash() {
   const tenants = PLATFORM_TENANTS.map((t) => ({ ...t, ...(t.slug ? DEMO_SCHOOLS.find((s) => s.slug === t.slug) : {}), plan: PLANS.find((p) => p.id === t.plan_id) }));
   const active = tenants.filter((t) => t.status === 'ACTIVE');
   const users = tenants.reduce((a, t) => a + t.billable_users, 0);
-  const mrr = active.reduce((a, t) => a + t.billable_users * t.plan.price_per_user, 0);
-  const byPlan = PLANS.map((p) => ({ label: p.name, value: active.filter((t) => t.plan_id === p.id).reduce((a, t) => a + t.billable_users * p.price_per_user, 0) }));
+  const byPlan = PLANS.map((p) => ({ label: p.name, value: tenants.filter((t) => t.plan_id === p.id).length }));
   return (
     <div className="stack">
       <Welcome name="Ankit Verma" sub="Miz School platform overview" actions={<button className="btn btn-primary" onClick={() => go('onboarding')}><Icon name="plus" size={16} /> Onboard school</button>} />
       <div className="grid g-4">
         <Stat label="Schools" value={tenants.length} foot={`${active.length} active · ${tenants.filter((t) => t.status === 'TRIAL').length} on trial`} icon="building" />
         <Stat label="Active users" value={num(users)} foot="Billable this month" icon="users" />
-        <Stat label="Monthly revenue" value={inr(mrr, true)} foot="Before GST" icon="rupee" tone="green" />
+        <Stat label="On trial" value={tenants.filter((t) => t.status === 'TRIAL').length} foot="Converting this month" icon="clock" tone="amber" />
         <Stat label="Past due" value={tenants.filter((t) => t.status === 'PAST_DUE').length} foot="Grace period running" icon="alert" tone="red" />
       </div>
       <div className="grid g-main">
@@ -456,7 +455,7 @@ function SuperDash() {
             <tbody>{tenants.map((t) => <tr key={t.name}><td><div className="row" style={{ gap: 10 }}>{t.slug ? <Crest school={t} size={22} /> : <span className="avatar sm">{t.name[0]}</span>}<div><div className="strong small">{t.name}</div><div className="xs muted">{t.city}</div></div></div></td><td className="small">{t.plan.name}</td><td className="num">{num(t.billable_users)}</td><td><StatusBadge status={t.status} /></td></tr>)}</tbody></table></div>
         </Card>
         <div className="stack">
-          <Card icon="coins" tone="green" title="Revenue by plan"><Bars data={byPlan} format={(v) => inr(v, true)} highlightLast={false} /></Card>
+          <Card icon="layers" tone="blue" title="Schools by plan"><Bars data={byPlan} format={(v) => v} highlightLast={false} /></Card>
           <Card icon="health" tone="green" title="System health" pad={false}>
             <div className="list">{[['API', '182 ms p95'], ['Database', 'Healthy · Mumbai'], ['Notification queue', '0 failed'], ['Storage', '38 GB used']].map(([a, b]) => <div key={a} className="row between small"><span className="row" style={{ gap: 8 }}><span className="dot" style={{ color: 'var(--success)' }} />{a}</span><span className="muted">{b}</span></div>)}</div>
           </Card>
