@@ -1,3 +1,4 @@
+import Icon from './components/Icon.jsx';
 import { useEffect } from 'react';
 import { useRoute } from './lib/router.js';
 import { SchoolProvider, useSchool, applyBrand } from './lib/store.jsx';
@@ -43,12 +44,14 @@ function SchoolApp({ module }) {
       </div>
     );
   }
-  const allowed = (access[role] || []).includes(module);
+  const allowed = module === 'dashboard' || !!access[role]?.[module];
   const key = allowed ? module : 'dashboard';
   const Page = MODULE_PAGES[key] || MODULE_PAGES.dashboard;
+  const viewOnly = key !== 'dashboard' && access[role]?.[key] === 'view';
   return (
     <AppShell module={key}>
-      <Page />
+      {viewOnly && <div className="viewonly-bar"><Icon name="eye" size={15} /> View only — you can see this page but not change anything. The school admin can give edit access in Users &amp; Access.</div>}
+      <div className={viewOnly ? 'view-only' : undefined}><Page key={`${role}-${key}`} /></div>
     </AppShell>
   );
 }
