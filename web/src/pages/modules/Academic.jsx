@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useSchool } from '../../lib/store.jsx';
 import Icon from '../../components/Icon.jsx';
-import { PageHead, Card, Stat, StatusBadge, Avatar, Badge, Search, Seg, Tabs, Modal, Progress, Empty, Bars, inr, pct, fmtDate } from '../../components/ui.jsx';
+import { PageHead, Card, Stat, StatusBadge, Avatar, Badge, Search, Seg, Tabs, Modal, Progress, Empty, Bars, inr, pct, fmtDate, IconTile, TONES } from '../../components/ui.jsx';
 import { attendanceStats, attendanceOn, attendanceTrend, studentAttendance, reportCard, sectionResults, grade, daySchedule, todayDow, currentPeriod, pendingHomework, todayISO } from '../../lib/derive.js';
 import { DAYS, PERIODS } from '../../data/generate.js';
 import { Crest } from '../../components/Brand.jsx';
 import { ChildSwitcher } from '../dashboards/Dashboards.jsx';
+import { subjectStyle } from '../dashboards/shared.jsx';
 
 const isStaff = (role) => ['school_admin', 'principal', 'teacher', 'scanner'].includes(role);
 
@@ -321,9 +322,10 @@ export function Timetable() {
                       const c = cell(i + 1, p.period);
                       if (!c) return <td key={d} className="empty-slot"><span className="xs muted">{i === 5 && p.period > 4 ? '—' : mine ? 'Free' : ''}</span></td>;
                       const now = i + 1 === dow && p.period === cur;
+                      const [tbg, tfg] = TONES[subjectStyle(idx.subjects[c.subject_id]).tone];
                       return (
-                        <td key={d} className={now ? 'now' : ''}>
-                          <div className="strong">{idx.subjects[c.subject_id]?.name}</div>
+                        <td key={d} className={now ? 'now' : ''} style={now ? undefined : { background: tbg, borderLeftColor: tfg }}>
+                          <div className="strong row" style={{ gap: 5, color: now ? '#fff' : tfg }}><Icon name={subjectStyle(idx.subjects[c.subject_id]).icon} size={13} />{idx.subjects[c.subject_id]?.name}</div>
                           <div className="xs muted">{mine && teacherMode ? `Class ${idx.sections[c.section_id].name}` : idx.teachers[c.teacher_id]?.full_name.replace(/^(Mr\.|Ms\.|Mrs\.)\s/, '')}</div>
                         </td>
                       );
@@ -362,7 +364,7 @@ export function Homework() {
           const status = done[h.id] ? 'Submitted' : h.due_on < today ? 'Past due' : h.due_on === today ? 'Due today' : `Due ${fmtDate(h.due_on, { weekday: 'short', day: 'numeric', month: 'short' })}`;
           return (
             <div key={h.id} className="card card-b row top wrap" style={{ gap: 14 }}>
-              <span className="stat" style={{ padding: 0 }}><span className="ico"><Icon name="book" size={17} /></span></span>
+              <IconTile icon={subjectStyle(idx.subjects[h.subject_id]).icon} tone={subjectStyle(idx.subjects[h.subject_id]).tone} size={40} />
               <div className="grow" style={{ minWidth: 220 }}>
                 <div className="row wrap" style={{ gap: 8 }}><Badge tone="blue">{idx.subjects[h.subject_id]?.name}</Badge><span className="xs muted">Assigned {fmtDate(h.assigned_on)} by {idx.teachers[h.teacher_id]?.full_name}</span></div>
                 <div className="strong" style={{ marginTop: 6 }}>{h.title}</div>

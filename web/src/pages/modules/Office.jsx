@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSchool } from '../../lib/store.jsx';
 import Icon from '../../components/Icon.jsx';
-import { PageHead, Card, Stat, StatusBadge, Badge, Search, Tabs, Modal, Bars, Empty, Progress, Avatar, inr, pct, fmtDate, ago } from '../../components/ui.jsx';
+import { PageHead, Card, Stat, StatusBadge, Badge, Search, Tabs, Modal, Bars, Empty, Progress, Avatar, inr, pct, fmtDate, ago, IconTile } from '../../components/ui.jsx';
 import { feeSummary, collectionByMonth, attendanceStats, attendanceOn, sectionResults } from '../../lib/derive.js';
 import { ChildSwitcher } from '../dashboards/Dashboards.jsx';
 import { Crest } from '../../components/Brand.jsx';
@@ -225,7 +225,7 @@ export function Notifications() {
       <PageHead title="Notifications" sub={`${list.length} unread`} />
       <Card pad={false}>
         <div className="list">
-          {list.map((n) => <div key={n.id} className="row top"><span className="stat" style={{ padding: 0 }}><span className="ico"><Icon name={icon[n.kind] || 'bell'} size={16} /></span></span><div className="grow"><div className="strong small">{n.title}</div><div className="small muted">{n.body}</div></div><span className="xs muted nowrap">{ago(n.created_at)}</span></div>)}
+          {list.map((n) => <div key={n.id} className="row top"><IconTile icon={icon[n.kind] || 'bell'} size={36} /><div className="grow"><div className="strong small">{n.title}</div><div className="small muted">{n.body}</div></div><span className="xs muted nowrap">{ago(n.created_at)}</span></div>)}
           {!list.length && <Empty>You are all caught up.</Empty>}
         </div>
       </Card>
@@ -264,7 +264,7 @@ export function Reports() {
         {reports.map(([icon, title, desc, build]) => (
           <Card key={title}>
             <div className="stack-sm">
-              <span className="stat" style={{ padding: 0 }}><span className="ico"><Icon name={icon} size={17} /></span></span>
+              <IconTile icon={icon} size={36} />
               <h3>{title}</h3>
               <p className="small muted">{desc}</p>
               <div className="row" style={{ marginTop: 6 }}>
