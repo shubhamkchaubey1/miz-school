@@ -240,28 +240,27 @@ export function Subscriptions() {
   const [inv, setInv] = useState(null);
   return (
     <div>
-      <PageHead title="Subscriptions & billing" sub="Per-user monthly billing with GST" />
+      <PageHead title="Subscriptions" sub="Plan, seat limit and renewal for every school" />
       <div className="grid g-4" style={{ marginBottom: 16 }}>
-        <Stat label="Billed this month" value={inr(rows.filter((t) => t.status !== 'TRIAL').reduce((a, t) => a + t.billable_users * t.plan.price_per_user * 1.18, 0), true)} foot="Incl. GST" icon="receipt" />
-        <Stat label="Collected" value={inr(rows.filter((t) => t.status === 'ACTIVE').reduce((a, t) => a + t.billable_users * t.plan.price_per_user * 1.18, 0), true)} icon="check" tone="green" />
+        <Stat label="Active users" value={num(rows.reduce((a, t) => a + t.billable_users, 0))} foot="All schools, this month" icon="users" />
+        <Stat label="Paid & active" value={rows.filter((t) => t.status === 'ACTIVE').length} foot="Schools" icon="check" tone="green" />
         <Stat label="Past due" value={rows.filter((t) => t.status === 'PAST_DUE').length} foot="In grace period" icon="alert" tone="red" />
         <Stat label="Trials ending < 30 days" value={rows.filter((t) => t.status === 'TRIAL').length} icon="clock" tone="amber" />
       </div>
       <Card pad={false}>
         <div className="table-wrap"><table className="table">
-          <thead><tr><th>School</th><th>Plan</th><th className="num">Users</th><th className="num">Rate</th><th className="num">Subtotal</th><th className="num">GST 18%</th><th className="num">Total</th><th>Renews</th><th>Status</th><th /></tr></thead>
-          <tbody>{rows.map((t) => { const sub = Math.max(t.billable_users, t.plan.minimum_users) * t.plan.price_per_user; return (
-            <tr key={t.name}><td className="strong">{t.name}</td><td>{t.plan.name}</td><td className="num">{num(t.billable_users)}</td><td className="num">₹{t.plan.price_per_user}</td><td className="num">{inr(sub)}</td><td className="num">{inr(sub * 0.18)}</td><td className="num strong">{inr(sub * 1.18)}</td><td className="small">{t.renews_in < 0 ? <span style={{ color: 'var(--danger)' }}>{-t.renews_in} days overdue</span> : `in ${t.renews_in} days`}</td><td><StatusBadge status={t.status} /></td><td><button className="btn btn-sm" onClick={() => setInv({ t, sub })}>Invoice</button></td></tr>
+          <thead><tr><th>School</th><th>Plan</th><th className="num">Active users</th><th className="num">Seat limit</th><th style={{ width: 140 }}>Seats used</th><th>Renews</th><th>Status</th><th /></tr></thead>
+          <tbody>{rows.map((t) => { const limit = Math.max(t.plan.minimum_users, Math.ceil(t.billable_users / 500) * 500); const sub = limit; return (
+            <tr key={t.name}><td className="strong">{t.name}</td><td>{t.plan.name}</td><td className="num">{num(t.billable_users)}</td><td className="num">{num(limit)}</td><td><div className="progress"><span style={{ width: `${Math.min(100, (t.billable_users / limit) * 100)}%` }} /></div></td><td className="small">{t.renews_in < 0 ? <span style={{ color: 'var(--danger)' }}>{-t.renews_in} days overdue</span> : `in ${t.renews_in} days`}</td><td><StatusBadge status={t.status} /></td><td><button className="btn btn-sm" onClick={() => setInv({ t, sub })}>Details</button></td></tr>
           ); })}</tbody>
         </table></div>
       </Card>
       {inv && (
-        <Modal title="Subscription invoice" onClose={() => setInv(null)}>
+        <Modal title="Subscription details" onClose={() => setInv(null)}>
           <div className="stack-sm small">
-            {[['School', inv.t.name], ['Plan', `${inv.t.plan.name} · ₹${inv.t.plan.price_per_user}/user`], ['Active billable users', num(inv.t.billable_users)], ['Subtotal', inr(inv.sub)], ['GST (18%)', inr(inv.sub * 0.18)]].map(([k, v]) => <div key={k} className="row between"><span className="muted">{k}</span><strong>{v}</strong></div>)}
+            {[['School', inv.t.name], ['Plan', inv.t.plan.name], ['Active users', num(inv.t.billable_users)], ['Seat limit', num(inv.sub)], ['Renews', inv.t.renews_in < 0 ? `${-inv.t.renews_in} days overdue` : `in ${inv.t.renews_in} days`], ['Status', inv.t.status]].map(([k, v]) => <div key={k} className="row between"><span className="muted">{k}</span><strong>{v}</strong></div>)}
             <div className="divider" />
-            <div className="row between"><strong>Total payable</strong><strong style={{ fontSize: 18 }}>{inr(inv.sub * 1.18)}</strong></div>
-            <p className="xs muted">User count is frozen from the month-end snapshot; line items stored per role type.</p>
+            <p className="xs muted">Admissions and invites beyond the seat limit are blocked with “Seat limit reached — contact Miz to upgrade”. User count is frozen from the month-end snapshot.</p>
           </div>
         </Modal>
       )}
@@ -272,14 +271,12 @@ export function Subscriptions() {
 export function Plans() {
   return (
     <div>
-      <PageHead title="Plans & pricing" sub="Configurable pricing engine — no hard-coded rates" actions={<button className="btn btn-primary"><Icon name="plus" size={16} /> New plan</button>} />
+      <PageHead title="Plans" sub="Modules and seat minimums per plan — configurable, nothing hard-coded" actions={<button className="btn btn-primary"><Icon name="plus" size={16} /> New plan</button>} />
       <div className="grid g-3">
         {PLANS.map((p) => (
           <Card key={p.id} title={p.name} action={<Badge tone="blue">{p.id}</Badge>}>
             <div className="stack-sm small">
-              <div className="row between"><span className="muted">Price per user</span><strong>₹{p.price_per_user} / month</strong></div>
-              <div className="row between"><span className="muted">GST</span><strong>{p.gst_rate}%</strong></div>
-              <div className="row between"><span className="muted">Minimum users</span><strong>{num(p.minimum_users)}</strong></div>
+              <div className="row between"><span className="muted">Minimum seats</span><strong>{num(p.minimum_users)}</strong></div>
               <div className="divider" />
               {p.features.map((f) => <div key={f} className="row" style={{ gap: 6 }}><Icon name="tick" size={14} style={{ color: 'var(--success)' }} />{f}</div>)}
             </div>
@@ -331,7 +328,7 @@ export function Onboarding() {
         <Card title="Administrator & academic session" footer={<div className="row" style={{ justifyContent: 'flex-end' }}><button className="btn" onClick={() => setStep(1)}>Back</button><button className="btn btn-primary" onClick={() => setStep(3)}>Create school</button></div>}>
           <div className="grid g-2">
             {['Admin name', 'Admin mobile', 'Admin email', 'Academic session (e.g. 2026–27)'].map((l) => <div className="field" key={l}><label>{l}</label><input className="input" /></div>)}
-            <div className="field"><label>Plan</label><select className="select">{PLANS.map((p) => <option key={p.id}>{p.name} — ₹{p.price_per_user}/user</option>)}</select></div>
+            <div className="field"><label>Plan</label><select className="select">{PLANS.map((p) => <option key={p.id}>{p.name}</option>)}</select></div>
             <div className="field"><label>Start with</label><select className="select"><option>30-day trial</option><option>Active subscription</option></select></div>
           </div>
         </Card>
