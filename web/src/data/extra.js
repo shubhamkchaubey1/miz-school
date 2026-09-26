@@ -297,7 +297,7 @@ export function generateExtra(base) {
     { id: 'br-1', name: `${school.short_name} — Main Campus`, city: school.city, students: 2450, teachers: 142, attendance: 96.4, fee_collection: 91, head: school.principal_name, established: school.established, main: true },
     { id: 'br-2', name: `${school.short_name} — North Campus`, city: school.city, students: 1320, teachers: 78, attendance: 94.8, fee_collection: 86, head: 'Mrs. Kavita Rao', established: 2011 },
     { id: 'br-3', name: `${school.short_name} — Junior Wing`, city: school.city, students: 860, teachers: 52, attendance: 97.1, fee_collection: 93, head: 'Ms. Priya Nair', established: 2016 },
-    { id: 'br-4', name: `${school.short_name} — ${school.city === 'Jaipur' ? 'Ajmer' : 'Kanpur'} Branch`, city: school.city === 'Jaipur' ? 'Ajmer' : 'Kanpur', students: 1040, teachers: 64, attendance: 93.2, fee_collection: 81, head: 'Mr. Deepak Verma', established: 2019 },
+    { id: 'br-4', name: `${school.short_name} — ${({ Jaipur: 'Ajmer', Lucknow: 'Kanpur' })[school.city] || 'Gurugram'} Branch`, city: ({ Jaipur: 'Ajmer', Lucknow: 'Kanpur' })[school.city] || 'Gurugram', students: 1040, teachers: 64, attendance: 93.2, fee_collection: 81, head: 'Mr. Deepak Verma', established: 2019 },
   ];
 
   return { skills, diary, comm_templates, automations, comm_logs, comm_stats, branches, admissions, books, book_loans, question_bank, online_tests, test_attempts, lesson_plans, ptm_slots, threads, gate_passes, health_visits, health_profiles, certificates, payroll, staff_support, inventory, calendar, co_scholastic, achievements };

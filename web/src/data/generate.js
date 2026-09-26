@@ -111,19 +111,38 @@ export function generateSchoolData(school) {
   // Transport
   const vehicles = Array.from({ length: 6 }, (_, i) => ({
     id: `${school.slug}-veh-${i + 1}`,
-    reg_no: `RJ14 PA ${int(1000, 9999)}`,
+    reg_no: `${school.city === 'New Delhi' ? 'DL1P C' : school.city === 'Lucknow' ? 'UP32 KT' : 'RJ14 PA'} ${int(1000, 9999)}`,
     model: i % 2 ? 'Tata Starbus 40' : 'Ashok Leyland Lynx 32',
     capacity: i % 2 ? 40 : 32,
     fitness_valid_till: iso(addDays(today, int(40, 300))),
   }));
-  const areas = [
-    ['Vaishali Nagar', 'Amrapali Circle', 'Queens Road', 'Khatipura', 'Jhotwara', 'Gandhi Path'],
-    ['Malviya Nagar', 'GT Mall', 'Jawahar Circle', 'Durgapura', 'Tonk Road', 'Sanganer'],
-    ['Mansarovar', 'VT Road', 'Shipra Path', 'Madhyam Marg', 'Metro Mall', 'Rajat Path'],
-    ['Raja Park', 'Adarsh Nagar', 'Moti Doongri', 'Janta Colony', 'Jawahar Nagar', 'Transport Nagar'],
-    ['Bani Park', 'Collectorate', 'Sindhi Camp', 'MI Road', 'Ajmeri Gate', 'Chandpole'],
-    ['C-Scheme', 'Ashok Nagar', 'Statue Circle', 'Civil Lines', 'Sahakar Marg', 'Lalkothi'],
-  ];
+  const AREAS = {
+    'New Delhi': [
+      ['Dwarka Sec 6', 'Palam', 'Uttam Nagar', 'Janakpuri', 'Vikaspuri', 'Tilak Nagar'],
+      ['Rajouri Garden', 'Punjabi Bagh', 'Paschim Vihar', 'Peeragarhi', 'Mundka', 'Nangloi'],
+      ['Vasant Kunj', 'Mahipalpur', 'Munirka', 'R K Puram', 'Saket', 'Malviya Nagar'],
+      ['Lajpat Nagar', 'Defence Colony', 'South Extension', 'Green Park', 'Hauz Khas', 'Safdarjung'],
+      ['Rohini Sec 9', 'Pitampura', 'Shalimar Bagh', 'Ashok Vihar', 'Model Town', 'Mukherjee Nagar'],
+      ['Mayur Vihar', 'Laxmi Nagar', 'Preet Vihar', 'Patparganj', 'IP Extension', 'Anand Vihar'],
+    ],
+    Lucknow: [
+      ['Gomti Nagar', 'Vibhuti Khand', 'Patrakarpuram', 'Indira Nagar', 'Munshipulia', 'Chinhat'],
+      ['Hazratganj', 'Lalbagh', 'Aminabad', 'Charbagh', 'Alambagh', 'Aishbagh'],
+      ['Aliganj', 'Kapoorthala', 'Jankipuram', 'Vikas Nagar', 'Mahanagar', 'Nishatganj'],
+      ['Ashiyana', 'LDA Colony', 'Kanpur Road', 'Sarojini Nagar', 'Transport Nagar', 'Amausi'],
+      ['Rajajipuram', 'Talkatora', 'Thakurganj', 'Chowk', 'Daliganj', 'Hussainganj'],
+      ['Sushant Golf City', 'Shaheed Path', 'Arjunganj', 'Telibagh', 'Vrindavan Yojana', 'PGI'],
+    ],
+    Jaipur: [
+      ['Vaishali Nagar', 'Amrapali Circle', 'Queens Road', 'Khatipura', 'Jhotwara', 'Gandhi Path'],
+      ['Malviya Nagar', 'GT Mall', 'Jawahar Circle', 'Durgapura', 'Tonk Road', 'Sanganer'],
+      ['Mansarovar', 'VT Road', 'Shipra Path', 'Madhyam Marg', 'Metro Mall', 'Rajat Path'],
+      ['Raja Park', 'Adarsh Nagar', 'Moti Doongri', 'Janta Colony', 'Jawahar Nagar', 'Transport Nagar'],
+      ['Bani Park', 'Collectorate', 'Sindhi Camp', 'MI Road', 'Ajmeri Gate', 'Chandpole'],
+      ['C-Scheme', 'Ashok Nagar', 'Statue Circle', 'Civil Lines', 'Sahakar Marg', 'Lalkothi'],
+    ],
+  };
+  const areas = AREAS[school.city] || AREAS.Jaipur;
   const routes = vehicles.map((v, i) => ({
     id: `${school.slug}-rt-${i + 1}`,
     code: `R-${pad(i + 1)}`,
@@ -368,7 +387,7 @@ export function generateSchoolData(school) {
     { id: `${school.slug}-nt4`, audience: 'all', title: 'Half Yearly results published', body: 'Report cards are available now.', kind: 'notice', created_at: hoursAgo(5) },
     { id: `${school.slug}-nt5`, audience: 'teacher', title: 'Leave request from parent', body: 'Class 8A · 2 days · Family function', kind: 'leave', created_at: hoursAgo(3) },
     { id: `${school.slug}-nt6`, audience: 'school_admin', title: '12 fee payments received today', body: '₹1,84,600 collected via UPI and Net Banking.', kind: 'fees', created_at: hoursAgo(1) },
-    { id: `${school.slug}-nt7`, audience: 'driver', title: 'Route R-01 — stop change', body: 'Pickup at Amrapali Circle moved 50 m ahead of the petrol pump.', kind: 'transport', created_at: hoursAgo(14) },
+    { id: `${school.slug}-nt7`, audience: 'driver', title: 'Route R-01 — stop change', body: `Pickup at ${areas[0][1]} moved 50 m ahead of the petrol pump.`, kind: 'transport', created_at: hoursAgo(14) },
     { id: `${school.slug}-nt8`, audience: 'student', title: 'Science exhibition registrations open', body: 'Submit your project title by Friday.', kind: 'notice', created_at: hoursAgo(20) },
   ];
 
