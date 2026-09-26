@@ -1,4 +1,5 @@
 import { subjectCodesFor } from './classes.js';
+import { makeSubs, subCandidates } from '../lib/substitution.js';
 // Extra K-12 modules: admissions CRM, library, online tests, lesson plans, PTM, messages,
 // gate passes, health, certificates, payroll, inventory, calendar, co-scholastic grades.
 // Built on top of the base dataset so every record points at real students/teachers.
@@ -156,7 +157,8 @@ export function generateExtra(base) {
   // ── Parent ↔ teacher messages ──
   const sec8a = sections.find((x) => x.id === kidA.section_id);
   const ct = teachers.find((t) => t.id === sec8a?.class_teacher_id) || teachers[0];
-  const mathT = teachers.find((t) => t.subject_id === subBy.MAT?.id) || teachers[1];
+  const sciId = base.allocations?.find((a) => a.section_id === sec8a?.id && a.subject_code === 'SCI')?.teacher_id;
+  const mathT = teachers.find((t) => t.id === sciId && t.id !== ct.id) || teachers.find((t) => t.subject_id === subBy.SCI?.id) || teachers[1];
   const at = (h) => new Date(now - h * 3600e3).toISOString();
   const threads = [
     { id: 'th-1', student_id: kidA.id, teacher_id: ct.id, subject: 'Leave for family function', messages: [
@@ -164,10 +166,10 @@ export function generateExtra(base) {
       { from: 'teacher', text: 'Noted. Please make sure the Science worksheet is completed after returning. Leave is approved in the app.', at: at(25) },
       { from: 'parent', text: 'Thank you ma’am, we will.', at: at(24) },
     ] },
-    { id: 'th-2', student_id: kidA.id, teacher_id: mathT.id, subject: 'Mathematics — extra practice', messages: [
-      { from: 'teacher', text: `${kidA.full_name.split(' ')[0]} did well in the half-yearly, but word problems need practice. I have shared a worksheet in Homework.`, at: at(50) },
+    { id: 'th-2', student_id: kidA.id, teacher_id: mathT.id, subject: 'Science — extra practice', messages: [
+      { from: 'teacher', text: `${kidA.full_name.split(' ')[0]} did well in the half-yearly, but diagram-based questions need practice. I have shared a worksheet in Homework.`, at: at(50) },
       { from: 'parent', text: 'Thank you sir. Is there a doubt-clearing class this week?', at: at(48) },
-      { from: 'teacher', text: 'Yes — Thursday 7th period in Room 801.', at: at(47) },
+      { from: 'teacher', text: 'Yes — Thursday 7th period in the Science Lab.', at: at(47) },
     ] },
   ];
   sections.slice(0, 6).forEach((sec, i) => {
@@ -300,5 +302,99 @@ export function generateExtra(base) {
     { id: 'br-4', name: `${school.short_name} — ${({ Jaipur: 'Ajmer', Lucknow: 'Kanpur' })[school.city] || 'Gurugram'} Branch`, city: ({ Jaipur: 'Ajmer', Lucknow: 'Kanpur' })[school.city] || 'Gurugram', students: 1040, teachers: 64, attendance: 93.2, fee_collection: 81, head: 'Mr. Deepak Verma', established: 2019 },
   ];
 
-  return { skills, diary, comm_templates, automations, comm_logs, comm_stats, branches, admissions, books, book_loans, question_bank, online_tests, test_attempts, lesson_plans, ptm_slots, threads, gate_passes, health_visits, health_profiles, certificates, payroll, staff_support, inventory, calendar, co_scholastic, achievements };
+  // ── Student leadership: CRs, vice-CRs, rotation monitors, head boy/girl, house captains ──
+  const TERM = 'Term 1 · 2026-27';
+  const HOUSES = ['Tagore', 'Raman', 'Kalam', 'Bose'];
+  const student_roles = [];
+  const bySec = {};
+  students.forEach((s) => { (bySec[s.section_id] ||= []).push(s); });
+  sections.forEach((sec) => {
+    const list = (bySec[sec.id] || []).slice().sort((a, b) => a.roll_no - b.roll_no);
+    const boys = list.filter((s) => s.gender === 'M' && s.id !== kidA.id);
+    const girls = list.filter((s) => s.gender === 'F' && s.id !== kidA.id);
+    const ctId = sec.class_teacher_id;
+    if (sec.stage === 'pre') {
+      const s = list[(Math.abs(sec.grade) * 3 + 2) % list.length];
+      if (s) student_roles.push({ id: `sr-${sec.id}-helper`, section_id: sec.id, student_id: s.id, role: 'Helper of the week', method: 'Rotation', term: 'This week', since: iso(addDays(today, -((today.getDay() + 6) % 7))), next_change: iso(addDays(today, 7 - ((today.getDay() + 6) % 7))), by: ctId });
+      return;
+    }
+    const method = sec.stage === 'primary' ? 'Rotation' : int(0, 2) ? 'Election' : 'Nominated';
+    const b = boys[int(0, Math.max(0, boys.length - 1))]; const g = girls[int(0, Math.max(0, girls.length - 1))];
+    const since = iso(new Date(today.getFullYear(), 3, 15));
+    if (b) student_roles.push({ id: `sr-${sec.id}-crb`, section_id: sec.id, student_id: b.id, role: 'Class Representative', method, term: sec.stage === 'primary' ? 'This month' : TERM, since, next_change: sec.stage === 'primary' ? iso(new Date(today.getFullYear(), today.getMonth() + 1, 1)) : null, by: ctId });
+    if (g) student_roles.push({ id: `sr-${sec.id}-crg`, section_id: sec.id, student_id: g.id, role: 'Class Representative', method, term: sec.stage === 'primary' ? 'This month' : TERM, since, next_change: sec.stage === 'primary' ? iso(new Date(today.getFullYear(), today.getMonth() + 1, 1)) : null, by: ctId });
+    const v = list.find((s) => s.id !== b?.id && s.id !== g?.id && s.id !== kidA.id && s.roll_no > 8);
+    if (v && sec.stage !== 'primary') student_roles.push({ id: `sr-${sec.id}-vcr`, section_id: sec.id, student_id: v.id, role: 'Vice CR', method: 'Nominated', term: TERM, since, by: ctId });
+  });
+  const seniors = students.filter((s) => sections.find((x) => x.id === s.section_id)?.grade === 12);
+  const headBoy = seniors.find((s) => s.gender === 'M'); const headGirl = seniors.find((s) => s.gender === 'F');
+  const principalApproved = { approved_by: 'Principal', status: 'approved' };
+  if (headBoy) student_roles.push({ id: 'sr-hb', section_id: headBoy.section_id, student_id: headBoy.id, role: 'Head Boy', method: 'Nominated', term: '2026-27', since: iso(new Date(today.getFullYear(), 3, 20)), school_level: true, ...principalApproved });
+  if (headGirl) student_roles.push({ id: 'sr-hg', section_id: headGirl.section_id, student_id: headGirl.id, role: 'Head Girl', method: 'Nominated', term: '2026-27', since: iso(new Date(today.getFullYear(), 3, 20)), school_level: true, ...principalApproved });
+  const eleven = students.filter((s) => sections.find((x) => x.id === s.section_id)?.grade === 11);
+  HOUSES.forEach((h, i) => { const s = eleven[i * 7 + 2]; if (s) student_roles.push({ id: `sr-house-${i}`, section_id: s.section_id, student_id: s.id, role: `${h} House Captain`, method: 'Election', term: '2026-27', since: iso(new Date(today.getFullYear(), 3, 25)), school_level: true, status: i === 3 ? 'pending' : 'approved', approved_by: i === 3 ? null : 'Principal' }); });
+
+  // ── Class elections (8A has a live Term 2 CR election the demo student can vote in) ──
+  const e8 = (bySec[sec8a?.id] || []).filter((s) => s.id !== kidA.id && !student_roles.some((x) => x.student_id === s.id));
+  const cands = [e8.find((s) => s.gender === 'F'), e8.filter((s) => s.gender === 'M')[1], e8.filter((s) => s.gender === 'F')[2]].filter(Boolean);
+  const elections = sec8a ? [{
+    id: 'el-8a-t2', section_id: sec8a.id, post: 'Class Representative', term: 'Term 2 · 2026-27', status: 'open', seats: 1,
+    opened_at: new Date(now - 26 * 3600e3).toISOString(), closes_on: iso(addDays(today, 2)),
+    candidates: cands.map((s, i) => ({ student_id: s.id, votes: [7, 5, 3][i] || 2 })), voters: [], eligible: (bySec[sec8a.id] || []).length, created_by: ct.id,
+  }] : [];
+
+  // ── Allocation history & teacher requests ──
+  const y = today.getFullYear();
+  const alloc_meta = { version: 3, status: 'published', published_at: `${y}-07-08T10:30:00`, published_by: school.principal_name, effective_from: `${y}-07-10`, session: `${y}-${String(y + 1).slice(2)}` };
+  const tq = teachers.find((t) => t.designation === 'TGT' && t.subject_codes?.[0] === 'SCI') || teachers[5];
+  const alloc_queries = [
+    { id: 'aq-1', teacher_id: tq.id, at: new Date(now - 30 * 3600e3).toISOString(), text: 'Can I keep 9B Science next year as well? They have boards in Class 10 and I have taught them since Class 8.', status: 'open' },
+  ];
+  const alloc_log = [
+    { id: 'al-3', at: `${y}-07-08T10:30:00`, by: school.principal_name, version: 3, text: 'Published v3 — Class 7 Science re-assigned after a resignation (4 changes). 6 teachers and 2 classes’ parents notified.' },
+    { id: 'al-2', at: `${y}-04-18T16:05:00`, by: school.principal_name, version: 2, text: 'Published v2 — split 11 Sci CS lab batches; Music moved to part-time (Mon · Wed · Fri).' },
+    { id: 'al-1', at: `${y}-03-28T11:40:00`, by: school.principal_name, version: 1, text: `Published v1 for session ${y}-${String(y + 1).slice(2)} — copied from last year (teachers move up with their class), 212 allocations, 0 errors.` },
+  ];
+
+  // ── Staff attendance (daily punch log) + today’s substitutions ──
+  const dToday = iso(today);
+  const dow = today.getDay() === 0 ? 1 : today.getDay();
+  const pastDates = [...new Set(base.attendance.map((a) => a.date))].sort().reverse().filter((d) => d !== dToday).slice(0, 24);
+  const hm = (h, m) => `${pad(h)}:${pad(m)}`;
+  const staff_attendance = [];
+  teachers.forEach((t) => {
+    pastDates.forEach((d) => {
+      const x = r();
+      const status = x < 0.9 ? 'present' : x < 0.95 ? 'late' : x < 0.985 ? 'leave' : 'absent';
+      staff_attendance.push({ id: `sa-${t.id}-${d}`, teacher_id: t.id, date: d, status, check_in: status === 'present' ? hm(7, int(22, 55)) : status === 'late' ? hm(8, int(3, 25)) : null, check_out: ['present', 'late'].includes(status) ? hm(14, int(25, 59)) : null, source: pick(['Biometric', 'Biometric', 'Face scan', 'App (geo-fenced)']) });
+    });
+  });
+  const sci8 = base.allocations?.find((a) => a.section_id === sec8a?.id && a.subject_code === 'SCI')?.teacher_id;
+  const awayToday = [
+    [base.timetable_slots.find((sl) => sl.section_id === sec8a?.id && sl.day === dow && sl.period >= 2 && sl.teacher_id !== ct.id)?.teacher_id || sci8, 'leave', 'Sick leave (approved)'],
+    [teachers.find((t) => t.designation === 'PRT' && t.subject_codes?.[0] === 'ENG')?.id, 'absent', 'Called at 7:10 am — fever'],
+    [teachers.find((t) => t.subject_codes?.[0] === 'ECO')?.id, 'half_day', 'Leaving after 4th period — bank work'],
+  ].filter(([id]) => id);
+  teachers.forEach((t) => {
+    const aw = awayToday.find(([id]) => id === t.id);
+    const status = aw ? aw[1] : r() < 0.06 ? 'late' : 'present';
+    staff_attendance.push({ id: `sa-${t.id}-${dToday}`, teacher_id: t.id, date: dToday, status, note: aw?.[2] || null, check_in: status === 'present' ? hm(7, int(22, 55)) : status === 'late' ? hm(8, int(3, 20)) : status === 'half_day' ? hm(7, int(30, 50)) : null, check_out: null, source: aw ? 'Marked by office' : pick(['Biometric', 'Biometric', 'Face scan', 'App (geo-fenced)']) });
+  });
+  const sub_week = Object.fromEntries(teachers.map((t) => [t.id, int(0, 3)]));
+  const view = { ...base, staff_attendance, sub_week, substitutions: [] };
+  let substitutions = awayToday.flatMap(([id, st]) => makeSubs({ ...view, substitutions: [] }, id, st, { date: dToday, day: dow }));
+  substitutions.sort((a, b) => a.period - b.period);
+  view.substitutions = substitutions;
+  // the demo teacher (8A class teacher) gets one cover duty if free
+  const mineIdx = substitutions.findIndex((sb) => !subCandidates(view, sb, { date: dToday }).find((c) => c.t.id === ct.id)?.blocked);
+  if (mineIdx >= 0) substitutions[mineIdx] = { ...substitutions[mineIdx], sub_teacher_id: ct.id, status: 'assigned', assigned_by: school.principal_name, assigned_at: new Date(now - 90 * 60e3).toISOString() };
+  substitutions = substitutions.map((sb, i) => {
+    if (sb.sub_teacher_id || i >= substitutions.length - 2) return sb;
+    const best = subCandidates({ ...view, substitutions }, sb, { date: dToday, subs: substitutions }).find((c) => !c.blocked);
+    const row = best ? { ...sb, sub_teacher_id: best.t.id, status: 'assigned', assigned_by: school.principal_name, assigned_at: new Date(now - 80 * 60e3).toISOString() } : sb;
+    substitutions[i] = row;
+    return row;
+  });
+
+  return { skills, diary, comm_templates, automations, comm_logs, comm_stats, branches, admissions, books, book_loans, question_bank, online_tests, test_attempts, lesson_plans, ptm_slots, threads, gate_passes, health_visits, health_profiles, certificates, payroll, staff_support, inventory, calendar, co_scholastic, achievements, student_roles, elections, alloc_meta, alloc_queries, alloc_log, staff_attendance, substitutions, sub_week };
 }

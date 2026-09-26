@@ -1,5 +1,6 @@
 import { generateExtra } from './extra.js';
-import { SUBJECTS as ALL_SUBJECTS, CLASS_LIST, stageOfGrade, sectionName, subjectCodesFor, examCodesFor, tuitionFor } from './classes.js';
+import { SUBJECTS as ALL_SUBJECTS, CLASS_LIST, stageOfGrade, sectionName, subjectCodesFor, examCodesFor, tuitionFor, DEFAULT_SCHEME, CATEGORIES, schemeKey } from './classes.js';
+import { autoAllocate, buildTimetable } from '../lib/allocation.js';
 // Deterministic demo-data generator. Produces the exact same row shapes as the
 // Supabase tables in /supabase/migrations, so screens work identically on
 // local demo data and on live Supabase data.
@@ -59,27 +60,36 @@ export function generateSchoolData(school) {
   const subjects = SUBJECTS.map((s, i) => ({ id: `${school.slug}-sub-${i + 1}`, ...s }));
   const subByCode = Object.fromEntries(subjects.map((x) => [x.code, x]));
 
-  // Teachers — staffing for LKG to 12
+  // Teachers — staffing for LKG to 12. Each teacher has a main subject, subjects they can also
+  // teach, a category (NTT/PRT/TGT/PGT) and a weekly load limit. Allocation uses all three.
   const teachers = [];
   const STAFF = [
-    ['ENG', 'NTT', 4], ['MAT', 'TGT', 1], ['ENG', 'TGT', 3], ['HIN', 'TGT', 3], ['MAT', 'TGT', 3], ['EVS', 'PRT', 4], ['SCI', 'TGT', 3],
-    ['SST', 'TGT', 3], ['SAN', 'TGT', 1], ['CS', 'TGT', 2], ['ART', 'PRT', 1], ['MUS', 'PRT', 1], ['PE', 'TGT', 2],
-    ['PHY', 'PGT', 1], ['CHE', 'PGT', 1], ['BIO', 'PGT', 1], ['MAT', 'PGT', 1], ['ENG', 'PGT', 1], ['ACC', 'PGT', 1], ['BST', 'PGT', 1],
-    ['ECO', 'PGT', 1], ['HIS', 'PGT', 1], ['POL', 'PGT', 1], ['GEO', 'PGT', 1],
+    ['ENG', ['HIN', 'MAT', 'EVS', 'ART'], 'NTT', 4],
+    ['MAT', ['SCI'], 'TGT', 1],
+    ['ENG', ['HIN', 'EVS'], 'PRT', 3], ['MAT', ['EVS', 'ENG'], 'PRT', 3], ['HIN', ['ENG', 'EVS'], 'PRT', 2], ['EVS', ['MAT', 'HIN'], 'PRT', 2],
+    ['ART', [], 'PRT', 1], ['MUS', [], 'PRT', 1, { part_time: true, max_load: 15, days: 'Mon · Wed · Fri' }],
+    ['ENG', [], 'TGT', 2], ['HIN', ['SAN'], 'TGT', 2], ['MAT', [], 'TGT', 1], ['SCI', ['MAT'], 'TGT', 1], ['SCI', [], 'TGT', 2],
+    ['SST', [], 'TGT', 2], ['SAN', ['HIN'], 'TGT', 1], ['CS', [], 'TGT', 2], ['PE', [], 'TGT', 3],
+    ['PHY', ['SCI'], 'PGT', 1], ['CHE', ['SCI'], 'PGT', 1], ['BIO', ['SCI'], 'PGT', 1], ['MAT', [], 'PGT', 1], ['ENG', [], 'PGT', 1],
+    ['ACC', ['BST'], 'PGT', 1], ['BST', ['ACC'], 'PGT', 1], ['ECO', [], 'PGT', 1], ['HIS', ['SST'], 'PGT', 1], ['POL', ['SST'], 'PGT', 1], ['GEO', ['SST'], 'PGT', 1],
   ];
-  STAFF.forEach(([code, designation, n]) => {
+  STAFF.forEach(([code, also, designation, n, opts = {}]) => {
     for (let k = 0; k < n; k++) {
       const i = teachers.length;
       const female = designation === 'NTT' || designation === 'PRT' ? r() > 0.1 : r() > 0.4;
-      const first = female ? pick(PARENT_F) : pick(PARENT_M);
-      const last = pick(LAST);
+      let first; let last; let guard = 0;
+      do { first = female ? pick(PARENT_F) : pick(PARENT_M); last = pick(LAST); guard++; } while (guard < 30 && teachers.some((x) => x.full_name.endsWith(`${first} ${last}`)));
       teachers.push({
         id: `${school.slug}-tch-${i + 1}`,
         employee_code: `${P}-T${pad(i + 1, 3)}`,
         full_name: `${female ? pick(['Ms.', 'Mrs.']) : 'Mr.'} ${first} ${last}`,
         gender: female ? 'F' : 'M',
         subject_id: subByCode[code].id,
+        subject_codes: [code, ...also],
         designation,
+        max_load: opts.max_load || CATEGORIES[designation].max,
+        part_time: !!opts.part_time,
+        days: opts.days || null,
         phone: phone(),
         email: `${first.toLowerCase()}.${last.toLowerCase()}@${school.slug}.demo.mizschool.app`,
         joined_on: `${int(2008, 2024)}-${pad(int(1, 12))}-01`,
@@ -88,24 +98,40 @@ export function generateSchoolData(school) {
     }
   });
 
-  // Sections — LKG to 12 (A/B; streams in 11–12)
+  // Sections — LKG to 12 (A/B; streams in 11–12). Class teacher comes from the right category.
   const sections = [];
   const nttPool = teachers.filter((t) => t.designation === 'NTT');
+  const prtPool = teachers.filter((t) => t.designation === 'PRT' && !['ART', 'MUS'].includes(t.subject_codes[0]));
+  const tgtPool = teachers.filter((t) => t.designation === 'TGT' && !['PE', 'CS'].includes(t.subject_codes[0]));
   const pgtPool = teachers.filter((t) => t.designation === 'PGT');
-  const otherPool = teachers.filter((t) => t.designation !== 'NTT' && t.designation !== 'PGT');
-  let ci = 0; let pi = 0; let ni = 0;
+  const used = new Set();
+  const takeFrom = (pool, g, sx) => {
+    const codes = Object.keys(DEFAULT_SCHEME[schemeKey({ grade: g, section: sx, stage: stageOfGrade(g) })]);
+    const t = pool.find((x) => !used.has(x.id) && codes.includes(x.subject_codes[0])) || pool.find((x) => !used.has(x.id)) || pool[0];
+    used.add(t.id); return t;
+  };
+  used.add(tgtPool[0].id); // 8A class teacher (Maths TGT) is reserved for the demo teacher
   CLASS_LIST.forEach(({ grade: g, sections: secs }) => {
     secs.forEach((sx) => {
       const stage = stageOfGrade(g);
       const name = sectionName(g, sx);
-      const ct = stage === 'pre' ? nttPool[ni++ % nttPool.length] : stage === 'senior' ? pgtPool[pi++ % pgtPool.length] : name === '8A' ? otherPool[0] : otherPool[1 + (ci++ % (otherPool.length - 1))];
+      const ct = name === '8A' ? tgtPool[0] : stage === 'pre' ? takeFrom(nttPool, g, sx) : stage === 'primary' ? takeFrom(prtPool, g, sx) : stage === 'senior' ? takeFrom(pgtPool, g, sx) : takeFrom(tgtPool, g, sx);
       sections.push({
         id: `${school.slug}-sec-${name.replace(/\W/g, '')}`,
         grade: g, section: sx, name, stage,
         class_teacher_id: ct.id,
+        class_teacher_since: `${today.getFullYear()}-04-01`,
+        co_class_teacher_id: null,
         room: stage === 'pre' ? `Kids Block · ${name}` : `${g <= 5 ? 'Block A' : g <= 10 ? 'Block B' : 'Senior Wing'} · ${g}0${sx === 'A' || sx === 'Sci' ? 1 : sx === 'B' || sx === 'Com' ? 2 : 3}`,
       });
     });
+  });
+  // co-class teachers: another teacher of the same section
+  const scheme = JSON.parse(JSON.stringify(DEFAULT_SCHEME));
+  const allocations = autoAllocate({ sections, teachers, subjects, scheme });
+  sections.forEach((sec) => {
+    const other = allocations.find((a) => a.section_id === sec.id && a.teacher_id !== sec.class_teacher_id && !['PE', 'ART', 'MUS'].includes(a.subject_code));
+    sec.co_class_teacher_id = other?.teacher_id || null;
   });
 
   // Transport
@@ -248,23 +274,9 @@ export function generateSchoolData(school) {
     });
   });
 
-  // Timetable
-  const timetable_slots = [];
-  const teachersBySubject = (sid) => teachers.filter((t) => t.subject_id === sid);
-  sections.forEach((sec, si) => {
-    const codes = subjectCodesFor(sec);
-    const ct = teachers.find((t) => t.id === sec.class_teacher_id);
-    for (let day = 1; day <= 6; day++) {
-      const periods = sec.stage === 'pre' ? (day === 6 ? 3 : 5) : day === 6 ? 4 : 7;
-      for (let p = 1; p <= periods; p++) {
-        const sub = subByCode[codes[(si + day * 3 + p) % codes.length]];
-        const pool = sec.stage === 'pre' ? [ct] : teachersBySubject(sub.id).filter((t) => (sec.stage === 'senior' ? t.designation === 'PGT' : t.designation !== 'PGT'));
-        const t = (pool.length ? pool : teachersBySubject(sub.id).length ? teachersBySubject(sub.id) : [ct])[(si + p) % (pool.length || 1)] || ct;
-        const pr = PERIODS[p - 1];
-        timetable_slots.push({ id: `${sec.id}-d${day}p${p}`, section_id: sec.id, day, period: p, start_time: pr.start, end_time: pr.end, subject_id: sub.id, teacher_id: t.id, room: sub.code === 'CS' ? 'Computer Lab' : ['PHY', 'CHE', 'BIO'].includes(sub.code) || (sub.code === 'SCI' && p > 5) ? 'Science Lab' : sub.code === 'PE' ? 'Playground' : sub.code === 'MUS' ? 'Music Room' : sec.room });
-      }
-    }
-  });
+  // Timetable — built from the published allocation (no teacher clashes)
+  const timetable_slots = buildTimetable(sections, allocations, PERIODS, school.seed);
+  const teacherFor = (secId, subId) => allocations.find((a) => a.section_id === secId && a.subject_id === subId)?.teacher_id;
 
   // Homework
   const hwTitles = {
@@ -300,7 +312,7 @@ export function generateSchoolData(school) {
         id: `${sec.id}-hw-${k + 1}`,
         section_id: sec.id,
         subject_id: sub.id,
-        teacher_id: sec.stage === 'pre' ? sec.class_teacher_id : (teachersBySubject(sub.id)[0] || { id: sec.class_teacher_id }).id,
+        teacher_id: teacherFor(sec.id, sub.id) || sec.class_teacher_id,
         title: pick((sec.stage === 'pre' && preHw[sub.code]) || hwTitles[sub.code]),
         details: sec.stage === 'pre' ? 'Activity at home with a parent — share a photo in the app.' : 'Submit in the class notebook. Neat handwriting and diagrams where needed.',
         assigned_on: iso(assigned),
@@ -428,7 +440,7 @@ export function generateSchoolData(school) {
   ];
 
   const base = {
-    school, subjects, teachers, sections, students, attendance, timetable_slots, homework, exams, marks,
+    school, subjects, teachers, sections, students, attendance, timetable_slots, allocations, subject_scheme: scheme, homework, exams, marks,
     fee_invoices, notices, notifications, school_events, vehicles, routes, route_stops, hostels, rooms,
     canteen_items, canteen_sales, admission_enquiries, visitors, phone_logs, postal_items, complaints,
     leave_requests, meta: { demoParentStudentIds: [kidA.id, kidB.id], demoStudentId: kidA.id, source: 'local' },

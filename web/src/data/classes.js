@@ -58,3 +58,31 @@ export function tuitionFor(sec) {
   if (st === 'secondary') return 17200;
   return sec.section === 'Sci' ? 21000 : sec.section === 'Com' ? 19000 : 18000;
 }
+
+/* ───── Teaching load: subject scheme, teacher categories ───── */
+/** Periods per week in each section (Mon–Fri + half Saturday). */
+export const slotsPerWeek = (sec) => ((sec.stage || stageOfGrade(sec.grade)) === 'pre' ? 28 : 39);
+/** Scheme key: stage, or stage + stream for senior secondary. */
+export const schemeKey = (sec) => { const st = sec.stage || stageOfGrade(sec.grade); return st === 'senior' ? `senior-${sec.section}` : st; };
+export const SCHEME_LABELS = { pre: 'Pre-primary (LKG–UKG)', primary: 'Primary (1–5)', middle: 'Middle (6–8)', secondary: 'Secondary (9–10)', 'senior-Sci': 'Class 11–12 Science', 'senior-Com': 'Class 11–12 Commerce', 'senior-Hum': 'Class 11–12 Humanities' };
+/** Default periods/week per subject — schools can change it in Teacher Allocation → Subject scheme. */
+export const DEFAULT_SCHEME = {
+  pre: { ENG: 6, HIN: 5, MAT: 5, EVS: 4, ART: 3, MUS: 3, PE: 2 },
+  primary: { ENG: 8, HIN: 7, MAT: 8, EVS: 6, CS: 3, ART: 3, PE: 4 },
+  middle: { ENG: 6, HIN: 5, MAT: 7, SCI: 7, SST: 6, SAN: 3, CS: 2, PE: 3 },
+  secondary: { ENG: 6, HIN: 5, MAT: 8, SCI: 8, SST: 6, CS: 3, PE: 3 },
+  'senior-Sci': { ENG: 5, PHY: 7, CHE: 7, MAT: 7, BIO: 6, CS: 4, PE: 3 },
+  'senior-Com': { ENG: 5, ACC: 8, BST: 8, ECO: 7, MAT: 7, PE: 4 },
+  'senior-Hum': { ENG: 6, HIS: 8, POL: 8, GEO: 7, ECO: 6, PE: 4 },
+};
+/** Teacher categories: which stages they normally teach and a default weekly load. */
+export const CATEGORIES = {
+  NTT: { label: 'Nursery Teacher', stages: ['pre'], max: 30 },
+  PRT: { label: 'Primary Teacher', stages: ['pre', 'primary'], max: 34 },
+  TGT: { label: 'Trained Graduate Teacher', stages: ['primary', 'middle', 'secondary'], max: 34 },
+  PGT: { label: 'Post Graduate Teacher', stages: ['secondary', 'senior'], max: 32 },
+};
+/** Specialist subjects can be taught across stages by any category. */
+export const SPECIALIST = ['PE', 'ART', 'MUS', 'CS'];
+/** The stage each category is mainly hired for (used to prefer the right teacher). */
+export const HOME_STAGES = { NTT: ['pre'], PRT: ['primary'], TGT: ['middle', 'secondary'], PGT: ['senior'] };
