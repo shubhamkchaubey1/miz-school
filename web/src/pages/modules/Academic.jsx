@@ -470,6 +470,9 @@ function ReportCardView() {
   const [exam, setExam] = useState(data.exams[1].id);
   const rc = reportCard(data, idx, s.id, exam);
   const rank = sectionResults(data, idx, s.section_id, exam).find((r) => r.student.id === s.id)?.rank;
+  const attPct = studentAttendance(data, s.id).pct;
+  const sorted = [...rc.rows].sort((a, b) => b.pct - a.pct);
+  const best = sorted[0]; const weak = sorted[sorted.length - 1];
   const sec = idx.sections[s.section_id];
   const ex = data.exams.find((e) => e.id === exam);
   const school = data.school;
@@ -494,6 +497,21 @@ function ReportCardView() {
             <tr><td className="strong">Total</td><td className="num strong">{rc.max}</td><td className="num strong">{rc.total}</td><td className="num strong">{rc.pct.toFixed(1)}</td><td><Badge tone="navy">{rc.grade}</Badge></td></tr>
           </tbody>
         </table></div>
+        <div className="grid g-2" style={{ gap: 0, borderTop: '1px solid var(--line)' }}>
+          <div style={{ borderRight: '1px solid var(--line)' }}>
+            <div className="card-b" style={{ paddingBottom: 6 }}><div className="upper">Co-scholastic areas (NEP holistic progress)</div></div>
+            <table className="table"><tbody>{(data.co_scholastic?.[s.id] || []).map((c) => <tr key={c.area}><td className="small">{c.area}</td><td style={{ width: 60 }}><Badge tone={c.grade === 'A' ? 'green' : c.grade === 'B' ? 'blue' : 'amber'}>{c.grade}</Badge></td></tr>)}</tbody></table>
+          </div>
+          <div className="card-b">
+            <div className="upper" style={{ marginBottom: 8 }}>Class teacher’s remarks</div>
+            <p className="small" style={{ lineHeight: 1.7 }}>{smartRemark(s, rc, attPct)}</p>
+            <div className="row wrap" style={{ gap: 6, marginTop: 10 }}>
+              <span className="badge blue"><Icon name="check" size={12} /> Attendance {Math.round(attPct)}%</span>
+              <span className="badge violet" style={{ background: '#efeafc', color: '#6a3fc2' }}><Icon name="trophy" size={12} /> Strongest: {best?.subject?.name}</span>
+              <span className="badge amber"><Icon name="trend" size={12} /> Focus: {weak?.subject?.name}</span>
+            </div>
+          </div>
+        </div>
         <div className="card-b row wrap between" style={{ borderTop: '1px solid var(--line)' }}>
           <div className="small"><span className="muted">Class rank:</span> <strong>{rank} of {idx.studentsBySection[s.section_id].length}</strong> · <span className="muted">Result:</span> <strong style={{ color: 'var(--success)' }}>{rc.pct >= 33 ? 'Pass' : 'Needs improvement'}</strong></div>
           <div className="row" style={{ gap: 32 }}>
@@ -504,4 +522,16 @@ function ReportCardView() {
       </div>
     </div>
   );
+}
+
+/** Auto-drafted remark from marks + attendance — the teacher can edit before publishing. */
+export function smartRemark(s, rc, attPct) {
+  const first = s.full_name.split(' ')[0];
+  const he = s.gender === 'F' ? 'She' : 'He';
+  const his = s.gender === 'F' ? 'her' : 'his';
+  const sorted = [...rc.rows].sort((a, b) => b.pct - a.pct);
+  const best = sorted[0]?.subject?.name; const weak = sorted[sorted.length - 1]?.subject?.name;
+  const tone = rc.pct >= 85 ? `${first} has delivered an excellent performance this term` : rc.pct >= 70 ? `${first} has shown consistent effort and good understanding this term` : rc.pct >= 55 ? `${first} is progressing steadily` : `${first} needs regular support and practice to reach ${his} potential`;
+  const att = attPct >= 95 ? 'Attendance has been exemplary.' : attPct >= 85 ? 'Attendance is regular.' : 'Irregular attendance is affecting learning; please ensure daily attendance.';
+  return `${tone}. ${he} shows particular strength in ${best}${weak && weak !== best ? `, while ${weak} needs more practice at home` : ''}. ${att} Keep it up!`;
 }

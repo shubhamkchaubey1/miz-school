@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSchool } from '../../lib/store.jsx';
 import Icon from '../../components/Icon.jsx';
 import { PageHead, Card, Stat, StatusBadge, Badge, Tabs, Modal, Avatar, Empty, Search, Bars, inr, fmtDate, fmtTime, ago } from '../../components/ui.jsx';
@@ -36,6 +36,7 @@ export function Transport() {
               </div>
             </div>
           )}
+          <Card title={`Live bus location — ${route.code}`} icon="nav" tone="green" pad={false}><BusMap stops={stops} myStopId={myStop?.id} route={route} /></Card>
           {!parent && (
             <Card title="Routes" pad={false}>
               <div className="table-wrap"><table className="table"><thead><tr><th>Route</th><th>Vehicle</th><th>Driver</th><th className="num">Students</th><th>Departs</th><th>Status</th></tr></thead>
@@ -59,6 +60,46 @@ export function Transport() {
             ))}
           </div>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+
+/** Simulated live GPS map — in production the bus position comes from the driver app / GPS device. */
+export function BusMap({ stops, myStopId, route }) {
+  const pts = stops.map((s, i) => [60 + i * (680 / Math.max(1, stops.length - 1)), i % 2 ? 90 : 210 - (i % 3) * 30]);
+  const [t, setT] = useState(1.3);
+  useEffect(() => { const id = setInterval(() => setT((x) => (x >= stops.length - 1 ? 0 : x + 0.05)), 800); return () => clearInterval(id); }, [stops.length]);
+  const i = Math.floor(t); const f = t - i; const a = pts[i]; const b = pts[Math.min(i + 1, pts.length - 1)];
+  const bx = a[0] + (b[0] - a[0]) * f; const by = a[1] + (b[1] - a[1]) * f;
+  const d = pts.map((p, k) => `${k ? 'L' : 'M'}${p[0]},${p[1]}`).join(' ');
+  const next = stops[Math.min(i + 1, stops.length - 1)];
+  return (
+    <div className="busmap">
+      <svg viewBox="0 0 800 300" role="img" aria-label={`Live location of bus ${route?.code}`}>
+        <defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#dde7d8" strokeWidth="1" /></pattern></defs>
+        <rect width="800" height="300" fill="url(#grid)" />
+        <path d="M0 150 C200 120 300 260 520 220 S760 100 800 120" stroke="#cfe0f5" strokeWidth="18" fill="none" />
+        <path d="M120 0 L160 300 M430 0 L400 300 M650 0 L700 300" stroke="#fff" strokeWidth="10" />
+        <path d={d} stroke="var(--brand)" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 0" />
+        {pts.map((p, k) => (
+          <g key={k}>
+            <circle cx={p[0]} cy={p[1]} r={stops[k].id === myStopId ? 11 : 8} fill={k <= i ? 'var(--brand)' : '#fff'} stroke={stops[k].id === myStopId ? '#e0a526' : 'var(--brand)'} strokeWidth="3" />
+            <text x={p[0]} y={p[1] + (k % 2 ? -18 : 28)} textAnchor="middle" fontSize="12" fontWeight="600" fill="#33445e">{stops[k].name}</text>
+          </g>
+        ))}
+        <g className="bus-pin" transform={`translate(${bx},${by})`}>
+          <circle r="22" fill="var(--accent)" opacity=".25"><animate attributeName="r" values="16;26;16" dur="1.6s" repeatCount="indefinite" /></circle>
+          <rect x="-15" y="-11" width="30" height="22" rx="5" fill="var(--brand-ink)" />
+          <rect x="-11" y="-7" width="22" height="7" rx="1.5" fill="#fff" />
+          <circle cx="-8" cy="11" r="3" fill="#333" /><circle cx="8" cy="11" r="3" fill="#333" />
+        </g>
+      </svg>
+      <div className="row between wrap small" style={{ padding: '8px 12px', background: '#fff', borderTop: '1px solid var(--line)' }}>
+        <span className="row" style={{ gap: 6 }}><span className="dot" style={{ color: 'var(--success)' }} /> Live · updated every 10 s</span>
+        <span>Next stop: <strong>{next?.name}</strong> · ETA {next?.eta} AM</span>
+        <span className="muted">Speed 28 km/h</span>
       </div>
     </div>
   );

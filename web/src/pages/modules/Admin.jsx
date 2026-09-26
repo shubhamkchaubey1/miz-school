@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useSchool } from '../../lib/store.jsx';
 import Icon from '../../components/Icon.jsx';
-import { PageHead, Card, Stat, StatusBadge, Badge, Tabs, Modal, inr, num } from '../../components/ui.jsx';
+import { PageHead, Card, Stat, StatusBadge, Badge, Tabs, Modal, IconTile, inr, num } from '../../components/ui.jsx';
 import { Crest, CampusArt } from '../../components/Brand.jsx';
-import { ROLES, PERMISSION_MATRIX, ROLE_PERMISSIONS } from '../../config/roles.js';
+import { ROLES, MODULES, PERMISSION_MATRIX, ROLE_PERMISSIONS } from '../../config/roles.js';
+import { defaultAccess } from '../../lib/store.jsx';
 import { PLANS, PLATFORM_TENANTS } from '../../data/api.js';
 import { DEMO_SCHOOLS } from '../../data/schools.js';
 
@@ -80,27 +81,102 @@ export function Settings() {
   );
 }
 
-/* ───────────── Roles & permissions ───────────── */
+/* ───────────── Users, roles & access ───────────── */
+const GRANT_RULES = [
+  ['shield', 'School Admin', 'Creates any user, assigns any role, and switches modules on or off for every role.'],
+  ['award', 'Principal', 'Can invite Teachers, Class Teachers and Coordinators, and approve their class/subject scope.'],
+  ['id', 'Class Teacher', 'Can only see students of their own section and subjects they teach — no fees, payroll or settings.'],
+  ['users', 'Parent / Student', 'Created automatically from the admission record; a parent sees only their own children.'],
+  ['building', 'Miz Super Admin', 'Creates the school and its first School Admin — never sees private student data by default.'],
+];
+
 export function Permissions() {
+  const { data, access, setAccess, notify } = useSchool();
+  const [tab, setTab] = useState('users');
+  const [invite, setInvite] = useState(false);
+  const [f, setF] = useState({ name: '', phone: '', role: 'teacher', scope: '8A' });
   const roles = ROLES.filter((r) => !r.platform);
+  const [users, setUsers] = useState(() => [
+    { name: 'Rohit Bhatnagar', role: 'school_admin', scope: 'Whole school', phone: '+91 98290 11223', status: 'active', last: '2 min ago' },
+    { name: data.school.principal_name, role: 'principal', scope: 'Whole school', phone: '+91 98290 33445', status: 'active', last: '1 hr ago' },
+    ...data.teachers.slice(0, 6).map((t, i) => ({ name: t.full_name, role: 'teacher', scope: data.sections.find((s) => s.class_teacher_id === t.id)?.name ? `Class ${data.sections.find((s) => s.class_teacher_id === t.id).name}` : 'Subject teacher', phone: t.phone, status: 'active', last: `${i + 2} hr ago` })),
+    { name: 'Vinod Khandelwal', role: 'accountant', scope: 'Fees & payroll', phone: '+91 94140 55667', status: 'active', last: 'Yesterday' },
+    { name: 'Sunita Mathur', role: 'librarian', scope: 'Library', phone: '+91 94140 77889', status: 'active', last: 'Yesterday' },
+    { name: 'Kiran Sethi', role: 'reception', scope: 'Front office', phone: '+91 94140 99001', status: 'active', last: '10 min ago' },
+    { name: data.routes[0].driver_name, role: 'driver', scope: `Route ${data.routes[0].code}`, phone: data.routes[0].driver_phone, status: 'active', last: 'Today 7:05 AM' },
+    { name: 'Neha Kulkarni', role: 'teacher', scope: 'Class 7B', phone: '+91 99280 12121', status: 'invited', last: '—' },
+  ]);
+  const allMods = Object.keys(MODULES).filter((k) => !['schools', 'subscriptions', 'plans', 'onboarding', 'dashboard', 'trip'].includes(k));
+  const toggle = (role, mod) => {
+    const cur = new Set(access[role] || []);
+    if (cur.has(mod)) cur.delete(mod); else cur.add(mod);
+    setAccess({ ...access, [role]: [...cur] });
+  };
+  const roleLabel = (k) => ROLES.find((r) => r.key === k)?.label || k;
   return (
     <div>
-      <PageHead title="Roles & permissions" sub="What each role can see and do at this school" actions={<button className="btn btn-primary"><Icon name="plus" size={16} /> Custom role</button>} />
-      <Card pad={false}>
-        <div className="table-wrap">
-          <table className="table" style={{ minWidth: 980 }}>
+      <PageHead title="Users, roles & access" sub="Who can log in, what each role sees, and who is allowed to grant access" actions={<button className="btn btn-primary" onClick={() => setInvite(true)}><Icon name="user-plus" size={16} /> Invite user</button>} />
+      <Tabs tabs={[['users', 'Users'], ['modules', 'Module access by role'], ['matrix', 'Permission matrix'], ['rules', 'Who grants access']]} value={tab} onChange={setTab} />
+      <div style={{ marginTop: 16 }}>
+        {tab === 'users' && (
+          <Card pad={false}><div className="table-wrap"><table className="table">
+            <thead><tr><th>User</th><th>Role</th><th>Scope</th><th>Login</th><th>Last active</th><th>Status</th><th /></tr></thead>
+            <tbody>{users.map((u, i) => (
+              <tr key={i}><td><div className="row" style={{ gap: 8 }}><span className="avatar sm">{u.name.replace(/^(Mr\.|Ms\.|Mrs\.|Dr\.)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}</span><span className="strong small">{u.name}</span></div></td>
+                <td><Badge tone="blue">{roleLabel(u.role)}</Badge></td><td className="small">{u.scope}</td><td className="small tnum">{u.phone} <span className="muted">· OTP</span></td><td className="small">{u.last}</td>
+                <td><Badge tone={u.status === 'active' ? 'green' : u.status === 'invited' ? 'amber' : 'red'}>{u.status}</Badge></td>
+                <td>{u.role !== 'school_admin' && <button className="btn btn-sm" onClick={() => { setUsers(users.map((x, j) => (j === i ? { ...x, status: x.status === 'disabled' ? 'active' : 'disabled' } : x))); notify(u.status === 'disabled' ? 'Access restored' : 'Access revoked — user logged out on all devices'); }}>{u.status === 'disabled' ? 'Enable' : 'Revoke'}</button>}</td></tr>
+            ))}</tbody>
+          </table></div></Card>
+        )}
+        {tab === 'modules' && (
+          <Card pad={false} footer={<div className="row between wrap"><span className="xs muted">Changes apply instantly: the module disappears from menus and its pages are blocked for that role.</span><button className="btn btn-sm" onClick={() => { setAccess(defaultAccess()); notify('Reset to Miz defaults'); }}>Reset to defaults</button></div>}>
+            <div className="table-wrap"><table className="table" style={{ minWidth: 1100 }}>
+              <thead><tr><th>Module</th>{roles.map((r) => <th key={r.key} style={{ textAlign: 'center' }}>{r.label.replace('School ', '').replace('Gate ', '')}</th>)}</tr></thead>
+              <tbody>{allMods.map((m) => (
+                <tr key={m}><td className="small strong"><span className="row" style={{ gap: 8 }}><Icon name={MODULES[m].icon} size={15} />{MODULES[m].label}</span></td>
+                  {roles.map((r) => { const locked = r.key === 'school_admin' && ['permissions', 'settings'].includes(m); const on = (access[r.key] || []).includes(m); return (
+                    <td key={r.key} style={{ textAlign: 'center' }}><input type="checkbox" checked={on} disabled={locked} onChange={() => toggle(r.key, m)} aria-label={`${MODULES[m].label} for ${r.label}`} /></td>
+                  ); })}</tr>
+              ))}</tbody>
+            </table></div>
+          </Card>
+        )}
+        {tab === 'matrix' && (
+          <Card pad={false}><div className="table-wrap"><table className="table" style={{ minWidth: 980 }}>
             <thead><tr><th>Permission</th>{roles.map((r) => <th key={r.key} style={{ textAlign: 'center' }}>{r.label.replace('School ', '')}</th>)}</tr></thead>
-            <tbody>
-              {PERMISSION_MATRIX.map(([group, perms]) => [
-                <tr key={group}><td colSpan={roles.length + 1} className="upper" style={{ background: 'var(--surface-2)' }}>{group}</td></tr>,
-                ...perms.map((p) => (
-                  <tr key={p}><td className="small tnum">{p}</td>{roles.map((r) => <td key={r.key} style={{ textAlign: 'center' }}>{ROLE_PERMISSIONS[r.key]?.includes(p) ? <Icon name="tick" size={16} style={{ color: 'var(--success)' }} /> : <span style={{ color: '#c9d3e0' }}>—</span>}</td>)}</tr>
-                )),
-              ])}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+            <tbody>{PERMISSION_MATRIX.map(([group, perms]) => [
+              <tr key={group}><td colSpan={roles.length + 1} className="upper" style={{ background: 'var(--surface-2)' }}>{group}</td></tr>,
+              ...perms.map((p) => <tr key={p}><td className="small tnum">{p}</td>{roles.map((r) => <td key={r.key} style={{ textAlign: 'center' }}>{ROLE_PERMISSIONS[r.key]?.includes(p) ? <Icon name="tick" size={16} style={{ color: 'var(--success)' }} /> : <span style={{ color: '#c9d3e0' }}>—</span>}</td>)}</tr>),
+            ])}</tbody>
+          </table></div></Card>
+        )}
+        {tab === 'rules' && (
+          <div className="grid g-2">
+            <Card title="Who can grant access" icon="shield" tone="navy" pad={false}><div className="list">{GRANT_RULES.map(([ic, who, what]) => <div key={who} className="row top"><IconTile icon={ic} size={34} /><div><div className="strong small">{who}</div><div className="small muted">{what}</div></div></div>)}</div></Card>
+            <Card title="How access works" icon="lock" tone="teal" pad={false}><div className="list small">{[
+              ['user-plus', 'Invite by mobile number → user logs in with OTP (no shared passwords).'],
+              ['layers', 'Role decides the menu; scope (branch, class, subject, route) decides the rows.'],
+              ['shield', 'Every table is locked per school in the database (row-level security).'],
+              ['clip-list', 'Every grant, revoke, marks change and fee refund is written to the audit log.'],
+              ['door', 'Revoking access logs the user out of web and app immediately.'],
+              ['building', 'Branch staff only see their branch; group management sees all branches.'],
+            ].map(([ic, t]) => <div key={t} className="row"><IconTile icon={ic} size={30} /><span>{t}</span></div>)}</div></Card>
+          </div>
+        )}
+      </div>
+      {invite && (
+        <Modal title="Invite a user" onClose={() => setInvite(false)} footer={<><button className="btn" onClick={() => setInvite(false)}>Cancel</button><button className="btn btn-primary" disabled={!f.name || !f.phone} onClick={() => { setUsers([...users, { ...f, scope: f.role === 'teacher' ? `Class ${f.scope}` : f.scope, status: 'invited', last: '—' }]); setInvite(false); setTab('users'); notify(`Invite sent to ${f.phone} on WhatsApp & SMS`); }}>Send invite</button></>}>
+          <div className="stack">
+            <div className="grid g-2"><div className="field"><label>Full name</label><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div><div className="field"><label>Mobile (login by OTP)</label><input className="input" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div></div>
+            <div className="grid g-2">
+              <div className="field"><label>Role</label><select className="select" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>{roles.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select></div>
+              <div className="field"><label>Scope</label><select className="select" value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value })}>{['Whole school', ...data.sections.map((s) => s.name), ...data.routes.map((r) => `Route ${r.code}`)].map((x) => <option key={x}>{x}</option>)}</select></div>
+            </div>
+            <div className="card card-b" style={{ background: 'var(--surface-2)', boxShadow: 'none' }}><div className="xs muted strong" style={{ marginBottom: 6 }}>This user will see</div><div className="row wrap" style={{ gap: 4 }}>{(access[f.role] || []).map((m) => <Badge key={m}>{MODULES[m]?.label}</Badge>)}</div></div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
