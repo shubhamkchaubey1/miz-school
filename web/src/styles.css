@@ -584,3 +584,24 @@ body { background: #f2f5f9; }
 .day-time { position: absolute; left: 12px; bottom: 12px; background: #0b2345; color: #fff; font-weight: 700; font-size: 12.5px; padding: 4px 10px; border-radius: 6px; }
 .day-card figcaption { padding: 16px 18px 18px; }
 @media (max-width: 900px) { .day-grid { grid-template-columns: 1fr; } .hero-photo::after { background: rgba(8,26,54,.9); } }
+/* teacher allocation grid */
+.alloc-table td.alloc-cell { padding: 4px; }
+.alloc-btn { width: 100%; min-width: 96px; text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; cursor: pointer; font: inherit; font-size: 12.5px; line-height: 1.35; color: var(--ink); }
+.alloc-btn:hover { border-color: var(--brand); background: var(--brand-50); }
+.alloc-btn.warn { border-color: var(--warn); background: var(--warn-bg); }
+.alloc-btn.err { border-color: var(--danger); background: var(--danger-bg); }
+.alloc-btn.changed { box-shadow: inset 3px 0 0 var(--brand); }
+.alloc-line { display: block; white-space: nowrap; }
+.alloc-line b { color: var(--brand); }
+th.center, td.center { text-align: center; }
+.chip-btn { height: 26px; padding: 0 9px; border-radius: 4px; border: 1px solid var(--line); background: #fff; font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.chip-btn.on.green { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+.chip-btn.on.amber { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.chip-btn.on.red { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.chip-btn.on.blue { background: var(--brand-50); color: var(--brand); border-color: var(--brand); }
+.chip-btn.on.violet { background: #efeafc; color: #6a3fc2; border-color: #6a3fc2; }
+.att-strip { display: flex; gap: 2px; }
+.att-dot { width: 8px; height: 16px; border-radius: 2px; background: #e5e9f0; }
+.att-dot.green { background: #3aa76d; } .att-dot.amber { background: #e0a030; } .att-dot.red { background: #d9534f; } .att-dot.blue { background: #5b8def; } .att-dot.violet { background: #8a63d2; }
+.sub-tag { display: inline-block; margin-top: 2px; font-size: 11px; font-weight: 700; color: #6a3fc2; }
+@media (max-width: 900px) { .alloc-side { grid-template-columns: 1fr !important; } }
