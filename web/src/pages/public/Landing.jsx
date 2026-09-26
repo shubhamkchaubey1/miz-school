@@ -31,11 +31,11 @@ export default function Landing() {
             </p>
             <div className="row wrap">
               <a className="btn btn-primary btn-lg" href="#/demo">Explore the live demo <Icon name="arrow" size={17} /></a>
-              <a className="btn btn-lg" href="#/pricing">See pricing</a>
+              <a className="btn btn-lg" href="#/features">Why Miz School</a>
             </div>
             <div className="row wrap small muted" style={{ gap: 18 }}>
               <span className="row" style={{ gap: 6 }}><Icon name="tick" size={15} style={{ color: 'var(--success)' }} /> Web, Android & iPhone</span>
-              <span className="row" style={{ gap: 6 }}><Icon name="tick" size={15} style={{ color: 'var(--success)' }} /> 11 role-based profiles</span>
+              <span className="row" style={{ gap: 6 }}><Icon name="tick" size={15} style={{ color: 'var(--success)' }} /> 13 role-based apps · 40+ modules</span>
               <span className="row" style={{ gap: 6 }}><Icon name="tick" size={15} style={{ color: 'var(--success)' }} /> Data isolated per school</span>
             </div>
           </div>

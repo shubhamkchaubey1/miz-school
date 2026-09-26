@@ -5,9 +5,9 @@ export function PublicNav() {
     <header className="pub-nav">
       <a href="#/" aria-label="Miz School home" style={{ textDecoration: 'none' }}><MizMark size={32} /></a>
       <nav className="links grow">
-        <a href="#/?s=features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Features</a>
-        <a href="#/?s=roles" onClick={(e) => { e.preventDefault(); document.getElementById('roles')?.scrollIntoView({ behavior: 'smooth' }); }}>For every role</a>
-        <a href="#/?s=schools" onClick={(e) => { e.preventDefault(); document.getElementById('schools')?.scrollIntoView({ behavior: 'smooth' }); }}>School branding</a>
+        <a href="#/features">Why Miz School</a>
+        <a href="#/features">Features</a>
+        <a href="#/demo">Live demo</a>
         <a href="#/pricing">Pricing</a>
       </nav>
       <div className="row" style={{ marginLeft: 'auto' }}>
