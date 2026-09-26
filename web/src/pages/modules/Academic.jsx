@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useSchool } from '../../lib/store.jsx';
 import Icon from '../../components/Icon.jsx';
 import { PageHead, Card, Stat, StatusBadge, Avatar, Badge, Search, Seg, Tabs, Modal, Progress, Empty, Bars, inr, pct, fmtDate, IconTile, TONES } from '../../components/ui.jsx';
+import { applySubs } from '../../lib/substitution.js';
 import { attendanceStats, attendanceOn, attendanceTrend, studentAttendance, reportCard, sectionResults, grade, daySchedule, todayDow, currentPeriod, pendingHomework, todayISO } from '../../lib/derive.js';
 import { DAYS, PERIODS } from '../../data/generate.js';
 import { Crest } from '../../components/Brand.jsx';
@@ -118,12 +119,13 @@ export function Teachers() {
       <Card pad={false}>
         <div className="card-h"><Search value={q} onChange={setQ} placeholder="Search staff" style={{ flex: 1, maxWidth: 360 }} /></div>
         <div className="table-wrap"><table className="table">
-          <thead><tr><th>Name</th><th>Emp. code</th><th>Subject</th><th>Designation</th><th>Class teacher</th><th>Phone</th><th>Joined</th></tr></thead>
+          <thead><tr><th>Name</th><th>Emp. code</th><th>Subject</th><th>Designation</th><th>Class teacher</th><th className="num">Load / wk</th><th>Phone</th><th>Joined</th></tr></thead>
           <tbody>{rows.map((t) => (
             <tr key={t.id}>
               <td><div className="row" style={{ gap: 10 }}><Avatar name={t.full_name} size="sm" /><div><div className="strong">{t.full_name}</div><div className="xs muted">{t.email}</div></div></div></td>
-              <td className="small">{t.employee_code}</td><td>{idx.subjects[t.subject_id]?.name}</td><td><Badge>{t.designation}</Badge></td>
+              <td className="small">{t.employee_code}</td><td>{idx.subjects[t.subject_id]?.name}{t.subject_codes?.length > 1 && <div className="xs muted">also {t.subject_codes.slice(1).join(', ')}</div>}</td><td><Badge>{t.designation}</Badge>{t.part_time && <div className="xs muted">Part-time</div>}</td>
               <td>{classTeacherOf[t.id] ? <Badge tone="blue">{classTeacherOf[t.id]}</Badge> : <span className="muted">—</span>}</td>
+              <td className="num tnum">{(idx.allocByTeacher[t.id] || []).reduce((a, r) => a + r.periods, 0)}/{t.max_load}</td>
               <td className="small tnum nowrap">{t.phone}</td><td className="small">{fmtDate(t.joined_on, { month: 'short', year: 'numeric' })}</td>
             </tr>
           ))}</tbody>
@@ -170,6 +172,7 @@ export function Classes() {
                     <div className="row between"><span className="muted">Strength</span><strong>{list.length} ({list.filter((x) => x.gender === 'F').length}G / {list.filter((x) => x.gender === 'M').length}B)</strong></div>
                     <div className="row between"><span className="muted">Present today</span><strong>{Math.round(a.pct)}%</strong></div>
                     <Progress value={a.pct} />
+                    {(data.student_roles || []).filter((r) => r.section_id === s.id && r.role === 'Class Representative').length > 0 && <div className="row between"><span className="muted">CR</span><strong style={{ textAlign: 'right' }}>{data.student_roles.filter((r) => r.section_id === s.id && r.role === 'Class Representative').map((r) => idx.students[r.student_id]?.full_name.split(' ')[0]).join(' & ')}</strong></div>}
                     <div className="xs muted">{subjectCodesFor(s).join(' · ')}</div>
                   </div>
                 </Card>
@@ -317,9 +320,10 @@ export function Timetable() {
   const [sec, setSec] = useState(family ? persona.child.section_id : data.sections[4].id);
   const [mine, setMine] = useState(teacherMode);
   const effSec = family ? persona.child.section_id : sec;
-  const slots = data.timetable_slots.filter((t) => (mine && teacherMode ? t.teacher_id === persona.teacher.id : t.section_id === effSec));
-  const cell = (day, period) => slots.find((t) => t.day === day && t.period === period);
   const dow = todayDow();
+  const all = useMemo(() => [...data.timetable_slots.filter((t) => t.day !== dow), ...applySubs(data, data.timetable_slots.filter((t) => t.day === dow), dow, todayISO())], [data, dow]);
+  const slots = all.filter((t) => (mine && teacherMode ? t.teacher_id === persona.teacher.id : t.section_id === effSec));
+  const cell = (day, period) => slots.find((t) => t.day === day && t.period === period);
   const cur = currentPeriod();
   return (
     <div>
@@ -349,7 +353,8 @@ export function Timetable() {
                       return (
                         <td key={d} className={now ? 'now' : ''} style={now ? undefined : { background: tbg, borderLeftColor: tfg }}>
                           <div className="strong row" style={{ gap: 5, color: now ? '#fff' : tfg }}><Icon name={subjectStyle(idx.subjects[c.subject_id]).icon} size={13} />{idx.subjects[c.subject_id]?.name}</div>
-                          <div className="xs muted">{mine && teacherMode ? `Class ${idx.sections[c.section_id].name}` : idx.teachers[c.teacher_id]?.full_name.replace(/^(Mr\.|Ms\.|Mrs\.)\s/, '')}</div>
+                          <div className="xs muted">{mine && teacherMode ? `Class ${idx.sections[c.section_id].name}` : c.sub && !c.teacher_id ? (c.sub.status === 'open' ? 'Teacher to be assigned' : 'Library self-study') : idx.teachers[c.teacher_id]?.full_name.replace(/^(Mr\.|Ms\.|Mrs\.)\s/, '')}</div>
+                          {c.sub && <div className="sub-tag">Substitute · for {idx.teachers[c.original_teacher_id]?.full_name.replace(/^(Mr\.|Ms\.|Mrs\.)\s/, '')}</div>}
                         </td>
                       );
                     })}
@@ -371,7 +376,10 @@ export function Homework() {
   const [sec, setSec] = useState(family ? persona.child.section_id : persona.section?.id || data.sections[0].id);
   const effSec = family ? persona.child.section_id : sec;
   const [adding, setAdding] = useState(false);
+  const myAlloc = role === 'teacher' ? (idx.allocByTeacher[persona.teacher.id] || []) : null;
+  const allowedSubs = (sid) => (myAlloc ? myAlloc.filter((a) => a.section_id === sid).map((a) => idx.subjects[a.subject_id]) : subjectCodesFor(idx.sections[sid]).map((c) => data.subjects.find((x) => x.code === c)));
   const [form, setForm] = useState({ subject_id: persona.teacher?.subject_id || data.subjects[0].id, title: '', details: '', due_on: '' });
+  const canAssign = role === 'school_admin' || (role === 'teacher' && allowedSubs(sec).length > 0);
   const [done, setDone] = useState({});
   const list = pendingHomework(data, effSec);
   const today = todayISO();
@@ -379,8 +387,8 @@ export function Homework() {
     <div>
       <PageHead title="Homework" sub={`Class ${idx.sections[effSec].name} · ${list.length} assignments`} actions={<>
         {role === 'parent' && <ChildSwitcher />}
-        {!family && <SectionSelect value={sec} onChange={setSec} />}
-        {(role === 'teacher' || role === 'school_admin') && <button className="btn btn-primary" onClick={() => setAdding(true)}><Icon name="plus" size={16} /> Assign homework</button>}
+        {!family && (myAlloc ? <select className="select" style={{ width: 'auto' }} value={sec} onChange={(e) => setSec(e.target.value)}>{[...new Set([persona.section.id, ...myAlloc.map((a) => a.section_id)])].map((id) => <option key={id} value={id}>Class {idx.sections[id].name}</option>)}</select> : <SectionSelect value={sec} onChange={setSec} />)}
+        {(role === 'teacher' || role === 'school_admin') && <button className="btn btn-primary" disabled={!canAssign} title={canAssign ? '' : 'You don’t teach this class — see My Classes'} onClick={() => { setForm({ ...form, subject_id: allowedSubs(sec)[0]?.id }); setAdding(true); }}><Icon name="plus" size={16} /> Assign homework</button>}
       </>} />
       <div className="stack">
         {list.map((h) => {
@@ -407,7 +415,7 @@ export function Homework() {
         <Modal title={`Assign homework — Class ${idx.sections[sec].name}`} onClose={() => setAdding(false)} footer={<><button className="btn" onClick={() => setAdding(false)}>Cancel</button><button className="btn btn-primary" disabled={!form.title || !form.due_on} onClick={() => { actions.addHomework({ ...form, section_id: sec, teacher_id: persona.teacher?.id || data.teachers[0].id }); setAdding(false); notify('Homework published — parents notified'); setForm({ ...form, title: '', details: '' }); }}>Publish</button></>}>
           <div className="stack">
             <div className="grid g-2">
-              <div className="field"><label>Subject</label><select className="select" value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })}>{data.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+              <div className="field"><label>Subject</label><select className="select" value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value })}>{allowedSubs(sec).filter(Boolean).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{myAlloc && <div className="xs muted" style={{ marginTop: 4 }}>Only subjects allotted to you in this class</div>}</div>
               <div className="field"><label>Due date</label><input type="date" className="input" value={form.due_on} onChange={(e) => setForm({ ...form, due_on: e.target.value })} /></div>
             </div>
             <div className="field"><label>Title</label><input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Exercise 8.1 — Q1 to Q10" /></div>
@@ -503,17 +511,21 @@ function ResultsOverview() {
 function MarksEntry() {
   const { data, idx, persona, actions, notify } = useSchool();
   const [exam, setExam] = useState(data.exams[1].id);
-  const [sec, setSec] = useState(persona.section.id);
-  const subject = persona.teacher.subject_id;
+  const pairs = (idx.allocByTeacher[persona.teacher.id] || []).filter((a) => !['PE', 'ART', 'MUS'].includes(a.subject_code) && idx.sections[a.section_id].stage !== 'pre')
+    .sort((a, b) => idx.sections[a.section_id].grade - idx.sections[b.section_id].grade);
+  const [pairId, setPairId] = useState(() => (pairs.find((p) => p.section_id === persona.section.id) || pairs[0])?.id);
+  const pair = pairs.find((p) => p.id === pairId) || pairs[0];
+  const sec = pair?.section_id || persona.section.id;
+  const subject = pair?.subject_id || persona.teacher.subject_id;
   const students = idx.studentsBySection[sec];
   const existing = Object.fromEntries(data.marks.filter((m) => m.exam_id === exam && m.subject_id === subject).map((m) => [m.student_id, m]));
   const max = Object.values(existing)[0]?.max_marks || 80;
   const [vals, setVals] = useState({});
-  useEffect(() => setVals({}), [exam, sec]);
+  useEffect(() => setVals({}), [exam, sec, subject]);
   const v = (id) => (vals[id] ?? existing[id]?.marks_obtained ?? '');
   return (
     <div>
-      <PageHead title="Marks entry" sub={`${idx.subjects[subject]?.name} · max marks ${max}`} actions={<><ExamSelect value={exam} onChange={setExam} /><SectionSelect value={sec} onChange={setSec} /></>} />
+      <PageHead title="Marks entry" sub={`${idx.subjects[subject]?.name} · max marks ${max}`} actions={<><ExamSelect value={exam} onChange={setExam} /><select className="select" style={{ width: 'auto' }} value={pair?.id} onChange={(e) => setPairId(e.target.value)} aria-label="Class and subject">{pairs.map((p) => <option key={p.id} value={p.id}>Class {idx.sections[p.section_id].name} · {idx.subjects[p.subject_id]?.name}</option>)}</select></>} />
       <Card pad={false}>
         <div className="table-wrap"><table className="table">
           <thead><tr><th className="num">Roll</th><th>Student</th><th style={{ width: 140 }}>Marks / {max}</th><th className="num">%</th><th>Grade</th></tr></thead>
@@ -523,7 +535,7 @@ function MarksEntry() {
               <td className="num">{p == null ? '—' : p.toFixed(0)}</td><td>{p == null ? '—' : <Badge tone={p < 33 ? 'red' : 'blue'}>{grade(p)}</Badge>}</td></tr>
           ); })}</tbody>
         </table></div>
-        <div className="card-f row between wrap"><span className="small muted">Marks are locked once the principal publishes results.</span><button className="btn btn-primary" onClick={() => { actions.saveMarks(exam, subject, vals); notify('Marks saved'); }}>Save marks</button></div>
+        <div className="card-f row between wrap"><span className="small muted">You can enter marks only for the classes and subjects allotted to you. Marks are locked once the principal publishes results.</span><button className="btn btn-primary" onClick={() => { actions.saveMarks(exam, subject, vals); notify('Marks saved'); }}>Save marks</button></div>
       </Card>
     </div>
   );
