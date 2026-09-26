@@ -1,3 +1,4 @@
+import { applySubs } from './substitution.js';
 // Pure selectors over the school dataset. Same functions work for local and Supabase data.
 
 export const todayDow = () => { const d = new Date().getDay(); return d === 0 ? 1 : d; }; // 1 = Mon … 6 = Sat
@@ -70,10 +71,11 @@ export function sectionResults(data, idx, sectionId, examId) {
   return list;
 }
 
+/** One day's periods. For today, substitutions are applied (the substitute replaces the absent teacher). */
 export function daySchedule(data, { sectionId, teacherId, day }) {
-  return data.timetable_slots
-    .filter((t) => t.day === day && (!sectionId || t.section_id === sectionId) && (!teacherId || t.teacher_id === teacherId))
-    .sort((a, b) => a.period - b.period);
+  let slots = data.timetable_slots.filter((t) => t.day === day && (!sectionId || t.section_id === sectionId));
+  if (day === todayDow()) slots = applySubs(data, slots, day, todayISO());
+  return slots.filter((t) => !teacherId || t.teacher_id === teacherId).sort((a, b) => a.period - b.period);
 }
 
 export function currentPeriod() {
