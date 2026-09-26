@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useSchool } from '../../lib/store.jsx';
 import Icon from '../../components/Icon.jsx';
-import { Card, Stat, Bars, Progress, StatusBadge, Avatar, Badge, inr, num, pct, ago, fmtDate, fmtTime } from '../../components/ui.jsx';
+import { Card, Stat, Bars, Progress, StatusBadge, Avatar, Badge, inr, num, pct, ago, fmtDate, fmtTime, IconTile } from '../../components/ui.jsx';
 import { attendanceStats, attendanceOn, attendanceTrend, feeSummary, daySchedule, todayDow, studentAttendance, reportCard, sectionResults, pendingHomework, todayISO } from '../../lib/derive.js';
 import { Welcome, QuickActions, TodaySchedule, NoticesCard, PeriodList, useGo } from './shared.jsx';
 import { PLATFORM_TENANTS, PLANS } from '../../data/api.js';
@@ -34,7 +34,7 @@ function AdminDash() {
   const newEnq = data.admission_enquiries.filter((e) => e.status === 'new').length;
   return (
     <div className="stack">
-      <Welcome name={persona.name} sub={`${data.school.name} · School overview`} actions={<><button className="btn" onClick={() => go('reports')}><Icon name="chart" size={16} /> Reports</button><button className="btn btn-primary" onClick={() => go('notices')}><Icon name="megaphone" size={16} /> New notice</button></>} />
+      <Welcome name={persona.name} sub={`${data.school.name} · School overview`} chips={[['users', `${data.students.length} students`], ['id', `${data.teachers.length} teachers`], ['layers', `${data.sections.length} sections`], ['check', `${Math.round(k.today.pct)}% present today`]]} actions={<><button className="btn" onClick={() => go('reports')}><Icon name="chart" size={16} /> Reports</button><button className="btn btn-primary" onClick={() => go('notices')}><Icon name="megaphone" size={16} /> New notice</button></>} />
       <div className="grid g-4">
         <Stat label="Students" value={num(data.students.length)} foot={`${data.sections.length} sections · Classes 6–10`} icon="users" />
         <Stat label="Teachers" value={num(data.teachers.length)} foot={`${data.teachers.filter((t) => t.designation === 'PGT').length} PGT · ${data.teachers.filter((t) => t.designation === 'TGT').length} TGT`} icon="id" />
@@ -42,14 +42,14 @@ function AdminDash() {
         <Stat label="Fees pending" value={inr(k.fees.pending, true)} foot={`${inr(k.fees.overdue, true)} overdue · ${k.fees.overdueCount} invoices`} icon="wallet" tone="amber" />
       </div>
       <div className="grid g-main">
-        <Card title="Attendance — last 10 school days" action={<button className="btn btn-ghost btn-sm" onClick={() => go('attendance')}>Open</button>}>
+        <Card icon="chart" tone="blue" title="Attendance — last 10 school days" action={<button className="btn btn-ghost btn-sm" onClick={() => go('attendance')}>Open</button>}>
           <Bars min={80} data={k.trend} format={(v) => `${Math.round(v)}`} />
           <div className="xs muted" style={{ marginTop: 8 }}>Percentage of students present or late.</div>
         </Card>
         <TodaySchedule />
       </div>
       <div className="grid g-main">
-        <Card title="Class-wise attendance today" pad={false} action={<span className="xs muted">{fmtDate(idx.today, { weekday: 'short', day: 'numeric', month: 'short' })}</span>}>
+        <Card icon="users" tone="green" title="Class-wise attendance today" pad={false} action={<span className="xs muted">{fmtDate(idx.today, { weekday: 'short', day: 'numeric', month: 'short' })}</span>}>
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Class</th><th>Class teacher</th><th className="num">Present</th><th className="num">Absent</th><th style={{ width: 160 }}>Rate</th></tr></thead>
@@ -68,18 +68,18 @@ function AdminDash() {
           </div>
         </Card>
         <div className="stack">
-          <Card title="Pending actions" pad={false}>
+          <Card icon="clip-list" tone="amber" title="Pending actions" pad={false}>
             <div className="list">
               {[['plane', `${pendingLeave} leave requests`, 'leave', 'Awaiting approval'], ['wallet', `${k.fees.overdueCount} overdue fee invoices`, 'fees', inr(k.fees.overdue)], ['message', `${openComplaints} open complaints`, 'reception', 'Front office'], ['desk', `${newEnq} new admission enquiries`, 'reception', 'Follow up today']].map(([ic, t, m, s]) => (
                 <button key={t} className="row" style={{ width: '100%', border: 0, background: 'none', cursor: 'pointer', textAlign: 'left' }} onClick={() => go(m)}>
-                  <span className="stat" style={{ padding: 0 }}><span className="ico"><Icon name={ic} size={16} /></span></span>
+                  <IconTile icon={ic} size={36} />
                   <span className="grow"><span className="strong small" style={{ display: 'block' }}>{t}</span><span className="xs muted">{s}</span></span>
                   <Icon name="right" size={16} style={{ color: 'var(--muted)' }} />
                 </button>
               ))}
             </div>
           </Card>
-          <QuickActions items={[['plus', 'Add student', 'students'], ['check', 'Attendance', 'attendance'], ['rupee', 'Collect fee', 'fees'], ['calendar', 'Timetable', 'timetable']]} />
+          <QuickActions items={[['user-plus', 'Add student', 'students', 'blue'], ['clip-check', 'Attendance', 'attendance', 'green'], ['coins', 'Collect fee', 'fees', 'amber'], ['calendar', 'Timetable', 'timetable', 'teal'], ['megaphone', 'Send notice', 'notices', 'rose'], ['chart', 'Reports', 'reports', 'violet']]} />
         </div>
       </div>
       <NoticesCard />
@@ -101,7 +101,7 @@ function PrincipalDash() {
   }), [data, idx, exam]);
   return (
     <div className="stack">
-      <Welcome name={persona.name} sub="Principal’s overview" actions={<button className="btn btn-primary" onClick={() => go('notices')}><Icon name="megaphone" size={16} /> Circular to parents</button>} />
+      <Welcome name={persona.name} sub="Principal’s overview" chips={[['check', `${Math.round(k.today.pct)}% present today`], ['plane', `${data.leave_requests.filter((l) => l.status === 'pending').length} approvals pending`]]} actions={<button className="btn btn-primary" onClick={() => go('notices')}><Icon name="megaphone" size={16} /> Circular to parents</button>} />
       <div className="grid g-4">
         <Stat label="Students" value={num(data.students.length)} foot={`${data.students.filter((s) => s.gender === 'F').length} girls · ${data.students.filter((s) => s.gender === 'M').length} boys`} icon="users" />
         <Stat label="Attendance today" value={pct(k.today.pct)} foot={`${k.today.absent} absent`} icon="check" tone="green" />
@@ -109,7 +109,7 @@ function PrincipalDash() {
         <Stat label="Leave approvals" value={data.leave_requests.filter((l) => l.status === 'pending').length} foot="Students & staff" icon="plane" tone="amber" />
       </div>
       <div className="grid g-main">
-        <Card title={`${exam.name} — class performance`} pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('results')}>Details</button>}>
+        <Card icon="medal" tone="violet" title={`${exam.name} — class performance`} pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('results')}>Details</button>}>
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Class</th><th className="num">Average</th><th className="num">Pass %</th><th>Topper</th></tr></thead>
@@ -121,7 +121,7 @@ function PrincipalDash() {
         </Card>
         <div className="stack">
           <TodaySchedule />
-          <Card title="Attendance trend"><Bars min={80} data={k.trend.slice(-6)} height={110} format={(v) => Math.round(v)} /></Card>
+          <Card icon="chart" tone="blue" title="Attendance trend"><Bars min={80} data={k.trend.slice(-6)} height={110} format={(v) => Math.round(v)} /></Card>
         </div>
       </div>
       <NoticesCard />
@@ -139,7 +139,7 @@ function TeacherDash() {
   const leaves = data.leave_requests.filter((l) => l.section_id === sec.id || l.requester_type === 'student').slice(0, 3);
   return (
     <div className="stack">
-      <Welcome name={persona.name} sub={`${idx.subjects[persona.teacher.subject_id]?.name} · Class teacher of ${sec.name}`} actions={<button className="btn btn-primary" onClick={() => go('attendance')}><Icon name="check" size={16} /> Mark attendance — {sec.name}</button>} />
+      <Welcome name={persona.name} sub={`${idx.subjects[persona.teacher.subject_id]?.name} · Class teacher of ${sec.name}`} chips={[['calendar', `${classes.length} periods today`], ['users', `${myClass.length} students in ${sec.name}`]]} actions={<button className="btn btn-primary" onClick={() => go('attendance')}><Icon name="check" size={16} /> Mark attendance — {sec.name}</button>} />
       <div className="grid g-4">
         <Stat label="Periods today" value={classes.length} foot={classes[0] ? `First at ${classes[0].start_time}` : 'Free day'} icon="calendar" />
         <Stat label={`Class ${sec.name} strength`} value={myClass.length} foot={`${myClass.filter((s) => s.gender === 'F').length} girls · ${myClass.filter((s) => s.gender === 'M').length} boys`} icon="users" />
@@ -147,11 +147,11 @@ function TeacherDash() {
         <Stat label="Homework posted" value={data.homework.filter((h) => h.teacher_id === persona.teacher.id).length} foot="This week" icon="book" />
       </div>
       <div className="grid g-main">
-        <Card title="Today’s classes" pad={false}><PeriodList slots={classes} showSection /></Card>
-        <QuickActions items={[['check', 'Mark attendance', 'attendance'], ['book', 'Add homework', 'homework'], ['award', 'Enter marks', 'results'], ['megaphone', 'Send notice', 'notices']]} />
+        <Card icon="calendar" tone="teal" title="Today’s classes" pad={false}><PeriodList slots={classes} showSection /></Card>
+        <QuickActions items={[['clip-check', 'Mark attendance', 'attendance', 'green'], ['notebook', 'Add homework', 'homework', 'indigo'], ['medal', 'Enter marks', 'results', 'violet'], ['megaphone', 'Send notice', 'notices', 'rose']]} />
       </div>
       <div className="grid g-2">
-        <Card title="Leave requests" pad={false}>
+        <Card icon="plane" tone="teal" title="Leave requests" pad={false}>
           <div className="list">
             {leaves.map((l) => (
               <div key={l.id} className="row">
@@ -219,9 +219,9 @@ function ChildHome({ student, parent }) {
         <Stat label="Next exam" value={fmtDate(next?.starts_on)} foot={next?.name} icon="calendar" />
       </div>
       <div className="grid g-main">
-        <Card title={`Today’s timetable — ${sec.name}`} pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('timetable')}>Week</button>}><PeriodList slots={slots} showTeacher /></Card>
+        <Card icon="calendar" tone="teal" title={`Today’s timetable — ${sec.name}`} pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('timetable')}>Week</button>}><PeriodList slots={slots} showTeacher /></Card>
         <div className="stack">
-          <Card title="Homework due" pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('homework')}>All</button>}>
+          <Card icon="notebook" tone="indigo" title="Homework due" pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('homework')}>All</button>}>
             <div className="list">
               {hw.length ? hw.map((h) => (
                 <div key={h.id}><div className="row between top"><span className="strong small">{h.title}</span><Badge tone="amber">Due {fmtDate(h.due_on)}</Badge></div><div className="xs muted">{idx.subjects[h.subject_id]?.name}</div></div>
@@ -229,8 +229,8 @@ function ChildHome({ student, parent }) {
             </div>
           </Card>
           {route && parent && (
-            <Card title="School bus" action={<button className="btn btn-ghost btn-sm" onClick={() => go('transport')}>Track</button>}>
-              <div className="row"><span className="stat" style={{ padding: 0 }}><span className="ico"><Icon name="bus" size={16} /></span></span><div className="grow"><div className="strong small">{route.code} · {route.name}</div><div className="xs muted">Pickup: {stop?.name} at {stop?.eta} AM · Driver {route.driver_name}</div></div></div>
+            <Card icon="bus" tone="amber" title="School bus" action={<button className="btn btn-ghost btn-sm" onClick={() => go('transport')}>Track</button>}>
+              <div className="row"><IconTile icon="bus" size={36} /><div className="grow"><div className="strong small">{route.code} · {route.name}</div><div className="xs muted">Pickup: {stop?.name} at {stop?.eta} AM · Driver {route.driver_name}</div></div></div>
             </Card>
           )}
           {due.length > 0 && parent && (
@@ -277,20 +277,20 @@ function DriverDash() {
         </div>
       </div>
       <div className="grid g-2">
-        <Card title="Pickup points" pad={false}>
+        <Card icon="map-pin" tone="rose" title="Pickup points" pad={false}>
           <div className="list">
             {stops.map((s) => <div key={s.id} className="row"><span className="time-col">{s.eta}</span><span className="grow small strong">{s.name}</span><span className="xs muted">{riders.filter((r) => r.stop_id === s.id).length} students</span></div>)}
           </div>
         </Card>
         <div className="stack">
-          <Card title="Vehicle">
+          <Card icon="bus" tone="amber" title="Vehicle">
             <div className="stack-sm small">
               <div className="row between"><span className="muted">Registration</span><strong>{v?.reg_no}</strong></div>
               <div className="row between"><span className="muted">Capacity</span><strong>{v?.capacity} seats</strong></div>
               <div className="row between"><span className="muted">Fitness valid till</span><strong>{fmtDate(v?.fitness_valid_till, { day: 'numeric', month: 'short', year: 'numeric' })}</strong></div>
             </div>
           </Card>
-          <Card title="Alerts" pad={false}>
+          <Card icon="bell-ring" tone="red" title="Alerts" pad={false}>
             <div className="list">{data.notifications.filter((n) => n.audience === 'driver').map((n) => <div key={n.id}><div className="strong small">{n.title}</div><div className="xs muted">{n.body} · {ago(n.created_at)}</div></div>)}</div>
           </Card>
           <button className="btn btn-danger btn-lg"><Icon name="alert" size={18} /> Emergency — call school</button>
@@ -315,11 +315,11 @@ function ReceptionDash() {
         <Stat label="Open complaints" value={data.complaints.filter((c) => c.status !== 'resolved').length} foot="Across departments" icon="message" tone="amber" />
       </div>
       <div className="grid g-main">
-        <Card title="Visitor book — today" pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('reception')}>Open</button>}>
+        <Card icon="door" tone="teal" title="Visitor book — today" pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('reception')}>Open</button>}>
           <div className="table-wrap"><table className="table"><thead><tr><th>Badge</th><th>Visitor</th><th>Purpose</th><th>In</th><th>Status</th></tr></thead>
             <tbody>{data.visitors.slice(0, 6).map((v) => <tr key={v.id}><td className="small strong">{v.badge_no}</td><td>{v.name}</td><td className="small">{v.purpose}</td><td className="small tnum">{fmtTime(v.check_in)}</td><td><StatusBadge status={v.status} /></td></tr>)}</tbody></table></div>
         </Card>
-        <Card title="Admission enquiries" pad={false}>
+        <Card icon="user-plus" tone="blue" title="Admission enquiries" pad={false}>
           <div className="list">{data.admission_enquiries.slice(0, 5).map((e) => <div key={e.id} className="row"><div className="grow"><div className="strong small">{e.student_name} · {e.grade}</div><div className="xs muted">{e.parent_name} · {e.source}</div></div><StatusBadge status={e.status} /></div>)}</div>
         </Card>
       </div>
@@ -359,7 +359,7 @@ function WardenDash() {
           );
         })}
       </div>
-      <Card title="Hostellers — night roll call" pad={false}>
+      <Card icon="clip-check" tone="indigo" title="Hostellers — night roll call" pad={false}>
         <div className="table-wrap"><table className="table"><thead><tr><th>Student</th><th>Class</th><th>Room</th><th>Today</th></tr></thead>
           <tbody>{hostellers.slice(0, 8).map((s) => <tr key={s.id}><td className="strong small">{s.full_name}</td><td>{idx.sections[s.section_id].name}</td><td>{idx.rooms[s.hostel_room_id]?.room_no}</td><td><StatusBadge status={idx.attToday[s.id] || 'present'} /></td></tr>)}</tbody></table></div>
       </Card>
@@ -382,11 +382,11 @@ function CanteenDash() {
         <Stat label="Low stock" value={low.length} foot={low.map((l) => l.name).join(', ') || 'All stocked'} icon="alert" tone={low.length ? 'red' : undefined} />
       </div>
       <div className="grid g-main">
-        <Card title="Recent bills" pad={false}>
+        <Card icon="receipt" tone="navy" title="Recent bills" pad={false}>
           <div className="table-wrap"><table className="table"><thead><tr><th>Bill</th><th>Customer</th><th className="num">Items</th><th>Paid via</th><th className="num">Amount</th></tr></thead>
             <tbody>{data.canteen_sales.slice(0, 8).map((s) => <tr key={s.id}><td className="small strong">{s.bill_no}</td><td className="small">{s.customer}</td><td className="num">{s.items_count}</td><td className="small">{s.method}</td><td className="num strong">{inr(s.total)}</td></tr>)}</tbody></table></div>
         </Card>
-        <Card title="Stock watch" pad={false}>
+        <Card icon="package" tone="amber" title="Stock watch" pad={false}>
           <div className="list">{[...data.canteen_items].sort((a, b) => a.stock - b.stock).slice(0, 6).map((i) => <div key={i.id} className="row"><div className="grow"><div className="strong small">{i.name}</div><div className="xs muted">{i.category} · {inr(i.price)}</div></div><Badge tone={i.stock < 15 ? 'red' : 'green'}>{i.stock} left</Badge></div>)}</div>
         </Card>
       </div>
@@ -415,7 +415,7 @@ function ScannerDash() {
         <Stat label="Not arrived" value={s.absent + s.leave} foot={`${s.leave} on approved leave`} icon="user-x" tone="red" />
         <Stat label="Visitors inside" value={data.visitors.filter((v) => v.status === 'inside').length} foot="Passes issued" icon="door" />
       </div>
-      <Card title="Recent scans" pad={false}>
+      <Card icon="scan" tone="green" title="Recent scans" pad={false}>
         <div className="list">{recent.map((st, i) => <div key={st.id} className="row"><Avatar name={st.full_name} size="sm" /><div className="grow"><div className="strong small">{st.full_name}</div><div className="xs muted">Class {idx.sections[st.section_id].name} · {st.admission_no}</div></div><span className="xs muted tnum">07:{String(52 - i * 2).padStart(2, '0')}</span><StatusBadge status={i === 2 ? 'late' : 'present'} /></div>)}</div>
       </Card>
     </div>
@@ -439,13 +439,13 @@ function SuperDash() {
         <Stat label="Past due" value={tenants.filter((t) => t.status === 'PAST_DUE').length} foot="Grace period running" icon="alert" tone="red" />
       </div>
       <div className="grid g-main">
-        <Card title="Schools" pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('schools')}>All schools</button>}>
+        <Card icon="building" tone="navy" title="Schools" pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('schools')}>All schools</button>}>
           <div className="table-wrap"><table className="table"><thead><tr><th>School</th><th>Plan</th><th className="num">Users</th><th>Status</th></tr></thead>
             <tbody>{tenants.map((t) => <tr key={t.name}><td><div className="row" style={{ gap: 10 }}>{t.slug ? <Crest school={t} size={22} /> : <span className="avatar sm">{t.name[0]}</span>}<div><div className="strong small">{t.name}</div><div className="xs muted">{t.city}</div></div></div></td><td className="small">{t.plan.name}</td><td className="num">{num(t.billable_users)}</td><td><StatusBadge status={t.status} /></td></tr>)}</tbody></table></div>
         </Card>
         <div className="stack">
-          <Card title="Revenue by plan"><Bars data={byPlan} format={(v) => inr(v, true)} highlightLast={false} /></Card>
-          <Card title="System health" pad={false}>
+          <Card icon="coins" tone="green" title="Revenue by plan"><Bars data={byPlan} format={(v) => inr(v, true)} highlightLast={false} /></Card>
+          <Card icon="health" tone="green" title="System health" pad={false}>
             <div className="list">{[['API', '182 ms p95'], ['Database', 'Healthy · Mumbai'], ['Notification queue', '0 failed'], ['Storage', '38 GB used']].map(([a, b]) => <div key={a} className="row between small"><span className="row" style={{ gap: 8 }}><span className="dot" style={{ color: 'var(--success)' }} />{a}</span><span className="muted">{b}</span></div>)}</div>
           </Card>
         </div>
