@@ -17,7 +17,7 @@ function useOutside(ref, fn) {
 
 export default function AppShell({ module, children }) {
   const { slug, role, data, persona, toast, access } = useSchool();
-  const can = (k) => k === 'dashboard' || (access[role] || []).includes(k);
+  const can = (k) => k === 'dashboard' || !!access[role]?.[k];
   const [open, setOpen] = useState(false);
   const school = data.school;
   const r = persona.role;
