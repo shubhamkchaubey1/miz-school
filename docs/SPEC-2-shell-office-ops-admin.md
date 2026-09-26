@@ -359,11 +359,11 @@ Modules not listed under EDIT are VIEW by default. School Admin has EDIT on ever
 - **Stats:**
   - `Schools` = 8; foot `5 active · 2 on trial`.
   - `Active users` = sum of billable users = 11,430; foot `Billable this month`.
-  - `Monthly revenue` = Σ billable × price over ACTIVE tenants only, before GST, = ₹10,77,400 → `₹10.8 L`; foot `Before GST`.
+  - `On trial`: count of TRIAL tenants; foot `Converting this month`.
   - `Past due` = 1; foot `Grace period running`.
 - **Cards:**
   - `Schools` table: School, Plan, Users, Status; action `All schools`.
-  - `Revenue by plan` (ACTIVE only): Basic ₹37,200; Standard ₹2,94,000; Premium ₹7,46,200.
+  - `Schools by plan`: count of schools per plan.
   - `System health`: API `182 ms p95`; Database `Healthy · Mumbai`; Notification queue `0 failed`; Storage `38 GB used`.
 
 ---
@@ -1006,11 +1006,11 @@ Modules not listed under EDIT are VIEW by default. School Admin has EDIT on ever
 
 ### Plans and tenants (data/api.js)
 - **Plans:**
-  | Plan | Price per user / month | GST | Minimum users | Features |
-  |---|---|---|---|---|
-  | Basic | ₹60 | 18% | 200 | Attendance, Timetable, Homework, Notices, Fees |
-  | Standard | ₹100 | 18% | 300 | Everything in Basic, Exams & results, Transport, Reception desk, Parent & student apps |
-  | Premium | ₹140 | 18% | 500 | Everything in Standard, Hostel & canteen, Payroll, Custom domain, Priority support |
+  | Plan | Minimum seats | Features |
+  |---|---|---|
+  | Basic | 200 | Attendance, Timetable, Homework, Notices, Fees |
+  | Standard | 300 | Everything in Basic, Exams & results, Transport, Reception desk, Parent & student apps |
+  | Premium | 500 | Everything in Standard, Hostel & canteen, Payroll, Custom domain, Priority support |
 - **Tenants** (plan / status / users / renews in):
   - aravali: standard / ACTIVE / 1600 / 5
   - crestview: premium / ACTIVE / 2210 / 12
@@ -1029,23 +1029,22 @@ Modules not listed under EDIT are VIEW by default. School Admin has EDIT on ever
   - Plan badge, Active users, Status.
   - Action: `Open` → `#/s/{slug}/school_admin/dashboard` for demo tenants; otherwise `Manage` (no handler).
 
-### Super Admin — Subscriptions & billing
-- **Header:** `Subscriptions & billing` / `Per-user monthly billing with GST`.
+### Super Admin — Subscriptions
+- **Header:** `Subscriptions` / `Plan, seat limit and renewal for every school`.
 - **KPIs:**
-  - `Billed this month` = Σ(non-TRIAL) billable × price × 1.18. This ignores the minimum. ≈ ₹13,84,612 → `₹13.8 L`; foot `Incl. GST`.
-  - `Collected` = the same over ACTIVE tenants only ≈ `₹12.7 L`.
+  - `Active users`: total across schools; foot `All schools, this month`.
+  - `Paid & active`: count of ACTIVE schools.
   - `Past due` = 1; foot `In grace period`.
   - `Trials ending < 30 days` = 2 (the count of TRIAL tenants).
 - **Table:**
-  - Columns: School, Plan, Users, Rate `₹p`, Subtotal = **max(users, minimum_users)** × price, `GST 18%`, Total = subtotal × 1.18.
+  - Columns: School, Plan, Active users, Seat limit, Seats used (bar).
   - Renews: `in N days`, or red `N days overdue`.
-  - Status; button `Invoice`.
-- **Invoice modal:** School; Plan `{name} · ₹p/user`; Active billable users; Subtotal; GST (18%); `Total payable`.
-  - Note: `User count is frozen from the month-end snapshot; line items stored per role type.`
+  - Status; button `Details`.
+- **Details modal:** School; Plan; Active users; Seat limit; Renews; Status; note on seat-limit blocking.
 
-### Super Admin — Plans & pricing
-- **Header:** `Plans & pricing` / `Configurable pricing engine — no hard-coded rates`. Button `New plan` (no handler).
-- **One card per plan:** id badge, `Price per user` `₹p / month`, `GST` `18%`, `Minimum users`, feature ticks.
+### Super Admin — Plans
+- Button `New plan` (no handler).
+- **One card per plan:** id badge, `Minimum seats`, feature ticks. Header `Plans` / `Modules and seat minimums per plan — configurable, nothing hard-coded`. No amounts anywhere.
 
 ### Super Admin — Website Import (Onboarding)
 - **Header:** `Onboard a school` / `Auto-detect → preview → school approves → publish`.
@@ -1062,7 +1061,7 @@ Modules not listed under EDIT are VIEW by default. School Admin has EDIT on ever
     - Buttons `Back`, `Approve`.
   - **Step 2:** `Administrator & academic session`.
     - Inputs (not bound): `Admin name`, `Admin mobile`, `Admin email`, `Academic session (e.g. 2026–27)`.
-    - `Plan` select (`{name} — ₹p/user`).
+    - `Plan` select (plan names only).
     - `Start with`: `30-day trial` / `Active subscription`.
     - Buttons `Back`, `Create school`.
   - **Step 3:** `{name} is ready`, `{site} · trial started · invite sent to the school admin`, button `Onboard another`.
