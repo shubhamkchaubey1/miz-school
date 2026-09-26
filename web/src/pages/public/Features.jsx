@@ -47,23 +47,23 @@ export default function Features() {
   return (
     <div style={{ background: '#fff' }}>
       <PublicNav />
-      <section className="hero">
-        <div className="pw" style={{ padding: '56px 20px 40px', maxWidth: 900 }}>
-          <span className="eyebrow"><Icon name="school" size={15} /> Why Miz School</span>
-          <h1 style={{ fontSize: 42, lineHeight: 1.12, color: 'var(--brand-ink)', marginTop: 16 }}>One branded platform that runs the whole school — and keeps every parent informed.</h1>
-          <p style={{ fontSize: 18, color: 'var(--ink-2)', marginTop: 14 }}>
+      <section className="hero hero-dark">
+        <div className="pw" style={{ padding: '64px 20px 56px', maxWidth: 900 }}>
+          <span className="eyebrow-dark"><span className="live-dot" /> Why Miz School</span>
+          <h1 style={{ fontSize: 42, lineHeight: 1.12, marginTop: 16 }}>One branded platform that runs the whole school — and keeps every parent informed.</h1>
+          <p className="hero-lead" style={{ marginTop: 14 }}>
             Miz School replaces paper registers, scattered WhatsApp groups and five disconnected apps with one system that the office, teachers, parents, students, drivers and management actually use every day — for a school of 50 students or a group of 50,000.
           </p>
           <div className="row wrap" style={{ marginTop: 20 }}>
-            <a className="btn btn-primary btn-lg" href="#/demo">Try the live demo <Icon name="arrow" size={17} /></a>
-            <a className="btn btn-lg" href="#/pricing">See pricing</a>
+            <a className="btn btn-gold btn-lg" href="#/demo">Try the live demo <Icon name="arrow" size={17} /></a>
+            <a className="btn btn-glass btn-lg" href="#/pricing">See pricing</a>
           </div>
         </div>
       </section>
 
       <section className="section" style={{ background: 'var(--bg)' }}>
         <div className="pw stack" style={{ gap: 24 }}>
-          <div><div className="upper" style={{ color: 'var(--brand)' }}>The problems we solve</div><h2 className="title" style={{ marginTop: 8 }}>What goes wrong in schools today — and what changes</h2></div>
+          <div><div className="kicker">The problems we solve</div><h2 className="title" style={{ marginTop: 8 }}>What goes wrong in schools today — and what changes</h2></div>
           <div className="grid g-2">
             {PROBLEMS.map(([ic, tone, title, pain, fix]) => (
               <div key={title} className="card card-b">
@@ -83,7 +83,7 @@ export default function Features() {
 
       <section className="section">
         <div className="pw stack" style={{ gap: 24 }}>
-          <div><div className="upper" style={{ color: 'var(--brand)' }}>Market gap</div><h2 className="title" style={{ marginTop: 8 }}>What typical school ERPs miss</h2><p className="muted" style={{ marginTop: 6 }}>Based on a review of 16 school ERP products used in India and globally.</p></div>
+          <div><div className="kicker">Market gap</div><h2 className="title" style={{ marginTop: 8 }}>What typical school ERPs miss</h2><p className="muted" style={{ marginTop: 6 }}>Based on a review of 16 school ERP products used in India and globally.</p></div>
           <div className="card" style={{ overflow: 'hidden' }}>
             <div className="table-wrap"><table className="table">
               <thead><tr><th>Capability</th><th>Typical school ERP</th><th style={{ color: 'var(--brand)' }}>Miz School</th></tr></thead>
@@ -95,7 +95,7 @@ export default function Features() {
 
       <section className="section" style={{ background: 'var(--bg)' }}>
         <div className="pw stack" style={{ gap: 24 }}>
-          <div><div className="upper" style={{ color: 'var(--brand)' }}>Any size</div><h2 className="title" style={{ marginTop: 8 }}>From 50 students to 50,000</h2></div>
+          <div><div className="kicker">Any size</div><h2 className="title" style={{ marginTop: 8 }}>From 50 students to 50,000</h2></div>
           <div className="grid g-3">
             {SIZES.map(([ic, tone, t, n, pts]) => (
               <div key={t} className="card card-b">
@@ -111,7 +111,7 @@ export default function Features() {
 
       <section className="section">
         <div className="pw stack" style={{ gap: 24 }}>
-          <div><div className="upper" style={{ color: 'var(--brand)' }}>Everything included</div><h2 className="title" style={{ marginTop: 8 }}>40+ modules, {ROLES.length} role-based apps</h2></div>
+          <div><div className="kicker">Everything included</div><h2 className="title" style={{ marginTop: 8 }}>40+ modules, {ROLES.length} role-based apps</h2></div>
           <div className="grid g-3">
             {MODULE_GROUPS.map(([g, ic, items]) => (
               <div key={g} className="card card-b">

@@ -28,7 +28,7 @@ export function Footer() {
         </div>
         <div className="row" style={{ gap: 48, alignItems: 'flex-start' }}>
           <div className="stack-sm"><strong style={{ color: '#fff' }}>Product</strong><a href="#/demo">Live demo</a><a href="#/pricing">Pricing</a></div>
-          <div className="stack-sm"><strong style={{ color: '#fff' }}>Contact</strong><span>hello@mizschool.app</span><span>Jaipur, India</span></div>
+          <div className="stack-sm"><strong style={{ color: '#fff' }}>Contact</strong><span>hello@mizschool.app</span><span>New Delhi, India</span></div>
         </div>
       </div>
       <div className="pw xs" style={{ marginTop: 28, color: '#8ea1bd' }}>© {new Date().getFullYear()} Miz School. Demo schools and records shown on this site are sample data.</div>

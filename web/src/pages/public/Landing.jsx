@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { PublicNav, Footer } from './PublicChrome.jsx';
 import { Crest, CampusArt } from '../../components/Brand.jsx';
 import Icon from '../../components/Icon.jsx';
-import { IconTile } from '../../components/ui.jsx';
+import { IconTile, TONES } from '../../components/ui.jsx';
 import { DEMO_SCHOOLS } from '../../data/schools.js';
 import { ROLES } from '../../config/roles.js';
 import { STAGES } from '../../data/classes.js';
@@ -38,27 +38,27 @@ export default function Landing() {
   return (
     <div style={{ background: '#fff' }}>
       <PublicNav />
-      <section className="hero hero-pro">
+      <section className="hero hero-dark">
         <div className="pw hero-in">
           <div className="stack" style={{ gap: 20 }}>
-            <span className="eyebrow"><Icon name="school" size={15} /> Smart school platform · LKG to Class 12</span>
-            <h1>Run your entire school from one app — under your school’s own name.</h1>
-            <p style={{ fontSize: 18, color: 'var(--ink-2)', maxWidth: 540 }}>
+            <span className="eyebrow-dark"><span className="live-dot" /> Smart school platform · LKG to Class 12</span>
+            <h1>Run your entire school from <span className="hl">one app</span> — under your school’s own name.</h1>
+            <p className="hero-lead">
               Admissions, attendance, homework, exams, fees, transport and parent communication on WhatsApp — for principals, teachers, parents, students and staff. From a 50-student school to a 50,000-student group.
             </p>
             <div className="row wrap">
-              <a className="btn btn-primary btn-lg" href="#/demo">Explore the live demo <Icon name="arrow" size={17} /></a>
-              <a className="btn btn-lg" href="#/features">Why Miz School</a>
+              <a className="btn btn-gold btn-lg" href="#/demo">Explore the live demo <Icon name="arrow" size={17} /></a>
+              <a className="btn btn-glass btn-lg" href="#/features">Why Miz School</a>
             </div>
-            <div className="row wrap small muted" style={{ gap: 18 }}>
-              {['CBSE · ICSE · State boards', 'Android, iPhone & web', 'Data isolated per school'].map((t) => <span key={t} className="row" style={{ gap: 6 }}><Icon name="tick" size={15} style={{ color: 'var(--success)' }} /> {t}</span>)}
+            <div className="row wrap small hero-ticks" style={{ gap: 18 }}>
+              {['CBSE · ICSE · State boards', 'Android, iPhone & web', 'Data isolated per school'].map((t) => <span key={t} className="row" style={{ gap: 6 }}><Icon name="tick" size={15} style={{ color: '#5eead4' }} /> {t}</span>)}
             </div>
           </div>
           <ProductPreview school={sx} />
         </div>
         <div className="pw">
           <div className="stat-band">
-            {[['40+', 'modules in one platform'], ['13', 'role-based apps'], ['LKG–12', 'every stage covered'], ['4', 'channels: app, WhatsApp, SMS, email']].map(([n, l]) => <div key={l}><div className="n">{n}</div><div className="l">{l}</div></div>)}
+            {[['layers', 'blue', '40+', 'modules in one platform'], ['users', 'violet', '13', 'role-based apps'], ['cap', 'amber', 'LKG–12', 'every stage covered'], ['chat', 'green', '4', 'channels: app, WhatsApp, SMS, email']].map(([ic, tone, n, l]) => <div key={l} className="row" style={{ gap: 14 }}><IconTile icon={ic} tone={tone} size={46} iconSize={22} /><div><div className="n">{n}</div><div className="l">{l}</div></div></div>)}
           </div>
         </div>
       </section>
@@ -67,7 +67,7 @@ export default function Landing() {
         <div className="pw stack" style={{ gap: 24 }}>
           <div className="row between wrap" style={{ alignItems: 'flex-end' }}>
             <div style={{ maxWidth: 640 }}>
-              <div className="upper" style={{ color: 'var(--brand)' }}>The problem</div>
+              <div className="kicker">The problem</div>
               <h2 className="title" style={{ marginTop: 8 }}>Schools lose time, money and trust to scattered tools</h2>
             </div>
             <a className="btn" href="#/features">See every problem we solve <Icon name="arrow" size={15} /></a>
@@ -77,7 +77,7 @@ export default function Landing() {
               ['chat', 'green', 'Parents feel left out', '40 WhatsApp groups → one official channel with read receipts.'],
               ['clip-list', 'amber', 'Teachers buried in paperwork', 'Registers & report cards → one tap and auto-calculated.'],
               ['bus', 'teal', 'Safety worries', 'No idea where the bus is → live map and OTP-verified pickup.']].map(([ic, tone, t, d]) => (
-              <div key={t} className="card card-b"><IconTile icon={ic} tone={tone} size={44} iconSize={22} /><h3 style={{ marginTop: 12, fontSize: 16 }}>{t}</h3><p className="small muted" style={{ marginTop: 6 }}>{d}</p></div>
+              <div key={t} className="card card-b tone-card" style={{ '--t': TONES[tone][1], '--tb': TONES[tone][0] }}><IconTile icon={ic} tone={tone} size={44} iconSize={22} /><h3 style={{ marginTop: 12, fontSize: 16 }}>{t}</h3><p className="small muted" style={{ marginTop: 6 }}>{d}</p></div>
             ))}
           </div>
         </div>
@@ -86,13 +86,13 @@ export default function Landing() {
       <section className="section">
         <div className="pw stack" style={{ gap: 24 }}>
           <div style={{ maxWidth: 680 }}>
-            <div className="upper" style={{ color: 'var(--brand)' }}>Every stage, its own features</div>
+            <div className="kicker">Every stage, its own features</div>
             <h2 className="title" style={{ marginTop: 8 }}>Built for LKG to Class 12</h2>
             <p className="muted" style={{ marginTop: 8, fontSize: 16 }}>A nursery child doesn’t need exams and a Class 12 student needs streams and board registration — Miz School changes the workflow for each stage automatically.</p>
           </div>
           <div className="stage-row">
             {Object.values(STAGES).map((st, i) => (
-              <div key={st.key} className="card card-b stage-card">
+              <div key={st.key} className="card card-b stage-card tone-card" style={{ '--t': TONES[st.tone][1], '--tb': TONES[st.tone][0] }}>
                 <div className="row between"><IconTile icon={st.icon} tone={st.tone} size={42} iconSize={21} /><span className="xs muted strong">0{i + 1}</span></div>
                 <h3 style={{ marginTop: 12, fontSize: 17 }}>{st.label}</h3>
                 <div className="strong small" style={{ color: 'var(--brand)' }}>{st.range}</div>
@@ -107,13 +107,13 @@ export default function Landing() {
       <section className="section" id="features" style={{ background: 'var(--bg)' }}>
         <div className="pw stack" style={{ gap: 28 }}>
           <div style={{ maxWidth: 680 }}>
-            <div className="upper" style={{ color: 'var(--brand)' }}>Modules</div>
+            <div className="kicker">Modules</div>
             <h2 className="title" style={{ marginTop: 8 }}>Everything a school runs on — in one place</h2>
             <p className="muted" style={{ marginTop: 8, fontSize: 16 }}>Switch on only what your school uses. A day school never sees hostel menus; a school without buses never sees transport.</p>
           </div>
           <div className="grid g-4">
             {FEATURES.map(([icon, tone, title, text]) => (
-              <div key={title} className="card feature">
+              <div key={title} className="card feature tone-hover" style={{ '--t': TONES[tone][1], '--tb': TONES[tone][0] }}>
                 <IconTile icon={icon} tone={tone} size={40} iconSize={20} />
                 <h3 style={{ fontSize: 16, marginTop: 12 }}>{title}</h3>
                 <p className="muted small" style={{ marginTop: 6 }}>{text}</p>
@@ -126,7 +126,7 @@ export default function Landing() {
       <section className="section">
         <div className="pw app-sec">
           <div className="stack" style={{ gap: 16 }}>
-            <div className="upper" style={{ color: 'var(--brand)' }}>For parents</div>
+            <div className="kicker">For parents</div>
             <h2 className="title">The whole school day, in a parent’s pocket</h2>
             <p className="muted" style={{ fontSize: 16 }}>Attendance the moment it is marked, homework, results, fee payment, the live bus, PTM booking and a private line to the class teacher — in the school’s own app and on WhatsApp.</p>
             <div className="grid g-2" style={{ gap: 10 }}>
@@ -140,7 +140,7 @@ export default function Landing() {
       <section className="section" id="schools" style={{ background: 'var(--bg)' }}>
         <div className="pw stack" style={{ gap: 28 }}>
           <div style={{ maxWidth: 680 }}>
-            <div className="upper" style={{ color: 'var(--brand)' }}>One platform · Many schools</div>
+            <div className="kicker">One platform · Many schools</div>
             <h2 className="title" style={{ marginTop: 8 }}>Every school looks like itself</h2>
             <p className="muted" style={{ marginTop: 8, fontSize: 16 }}>Same software underneath. Each school gets its own address, crest, colours and campus photo on the login, dashboards, receipts and notices.</p>
           </div>
@@ -172,7 +172,7 @@ export default function Landing() {
         <div className="pw stack" style={{ gap: 28 }}>
           <div className="row between wrap">
             <div style={{ maxWidth: 640 }}>
-              <div className="upper" style={{ color: 'var(--brand)' }}>For every role</div>
+              <div className="kicker">For every role</div>
               <h2 className="title" style={{ marginTop: 8 }}>Each person sees only their work</h2>
               <p className="muted" style={{ marginTop: 8, fontSize: 16 }}>The admin decides who sees what. A teacher sees only their class, a parent only their children, the accountant only accounts.</p>
             </div>
@@ -192,7 +192,7 @@ export default function Landing() {
       <section className="section" style={{ background: 'var(--bg)' }}>
         <div className="pw stack" style={{ gap: 28 }}>
           <div style={{ maxWidth: 680 }}>
-            <div className="upper" style={{ color: 'var(--brand)' }}>Onboarding</div>
+            <div className="kicker">Onboarding</div>
             <h2 className="title" style={{ marginTop: 8 }}>Live in days, not months</h2>
           </div>
           <div className="grid g-4">
@@ -214,7 +214,7 @@ export default function Landing() {
 
       <section className="section">
         <div className="pw" style={{ maxWidth: 860 }}>
-          <div className="upper" style={{ color: 'var(--brand)', textAlign: 'center' }}>FAQ</div>
+          <div style={{ textAlign: 'center' }}><span className="kicker">FAQ</span></div>
           <h2 className="title" style={{ marginTop: 8, textAlign: 'center', marginBottom: 20 }}>Questions schools ask us</h2>
           <div className="card" style={{ overflow: 'hidden' }}>
             {FAQ.map(([q, a], i) => (
@@ -229,7 +229,7 @@ export default function Landing() {
 
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="pw">
-          <div className="card row between wrap" style={{ padding: '28px 32px', background: 'var(--brand-ink)', borderColor: 'var(--brand-ink)', gap: 20 }}>
+          <div className="card row between wrap cta-band" style={{ gap: 20 }}>
             <div>
               <div className="serif" style={{ color: '#fff', fontSize: 24, fontWeight: 700 }}>₹100 per active user / month + GST</div>
               <div style={{ color: '#b9c7db' }}>Students, parents and staff — billed on active accounts only. No setup fee for the pilot.</div>
