@@ -4,6 +4,7 @@ import Icon from '../../components/Icon.jsx';
 import { PageHead, Card, Stat, StatusBadge, Badge, Search, Tabs, Modal, Bars, Empty, Progress, Avatar, inr, pct, fmtDate, ago, IconTile } from '../../components/ui.jsx';
 import { feeSummary, collectionByMonth, attendanceStats, attendanceOn, sectionResults } from '../../lib/derive.js';
 import { ChildSwitcher } from '../dashboards/Dashboards.jsx';
+import { STAGES, STREAMS, tuitionFor, gradeLabel } from '../../data/classes.js';
 import { Crest } from '../../components/Brand.jsx';
 
 /* ───────────── Fees ───────────── */
@@ -41,6 +42,14 @@ function FeesOffice() {
           </div>
         </Card>
       </div>
+      <Card title="Fee structure — LKG to Class 12 (AY 2026–27)" icon="receipt" tone="navy" pad={false} style={{ marginBottom: 16 }} action={<span className="xs muted">Instalments: quarterly · late fee ₹50/day after due date · sibling discount 10%</span>}>
+        <div className="table-wrap"><table className="table">
+          <thead><tr><th>Class</th><th>Stage</th><th className="num">Admission (one-time)</th><th className="num">Tuition / quarter</th><th className="num">Annual tuition</th><th className="num">Lab / activity</th><th className="num">Transport / term</th><th className="num">Students</th></tr></thead>
+          <tbody>{[...new Map(data.sections.map((x) => [x.stage === 'senior' ? `${x.grade}-${x.section}` : x.grade, x])).values()].map((x) => { const t = tuitionFor(x); return (
+            <tr key={x.id}><td className="strong">{x.stage === 'senior' ? `${x.grade} ${STREAMS[x.section]}` : gradeLabel(x.grade) === String(x.grade) ? `Class ${x.grade}` : gradeLabel(x.grade)}</td><td><Badge tone={STAGES[x.stage].tone}>{STAGES[x.stage].label}</Badge></td><td className="num">{inr(x.stage === 'pre' ? 15000 : x.stage === 'senior' ? 25000 : 20000)}</td><td className="num">{inr(t)}</td><td className="num strong">{inr(t * 4)}</td><td className="num">{x.stage === 'senior' && x.section === 'Sci' ? inr(4500) : x.stage === 'pre' ? inr(2000) : inr(1500)}</td><td className="num">{inr(9600)}</td><td className="num">{data.sections.filter((y) => (x.stage === 'senior' ? y.grade === x.grade && y.section === x.section : y.grade === x.grade)).reduce((a, y) => a + (idx.studentsBySection[y.id] || []).length, 0)}</td></tr>
+          ); })}</tbody>
+        </table></div>
+      </Card>
       <Card pad={false}>
         <div className="card-h row wrap">
           <Tabs tabs={[['overdue', 'Overdue'], ['due', 'Due'], ['paid', 'Paid'], ['all', 'All invoices']]} value={tab} onChange={setTab} />
@@ -252,7 +261,7 @@ export function Reports() {
   const reports = [
     ['check', 'Attendance register', 'Section-wise attendance for the latest school day', () => [['Class', 'Present', 'Late', 'Absent', 'Leave', 'Rate %'], ...data.sections.map((s) => { const a = attendanceStats(attendanceOn(data, idx.today, s.id)); return [s.name, a.present, a.late, a.absent, a.leave, a.pct.toFixed(1)]; })]],
     ['wallet', 'Fee defaulters', 'Students with overdue invoices and guardian contacts', () => [['Student', 'Class', 'Invoice', 'Amount', 'Guardian', 'Phone'], ...data.fee_invoices.filter((f) => f.status === 'overdue').map((f) => { const s = idx.students[f.student_id]; return [s.full_name, idx.sections[s.section_id].name, f.invoice_no, f.amount, s.guardian_name, s.guardian_phone]; })]],
-    ['award', `${exam.name} results`, 'Merit list with percentage and grade for all classes', () => [['Class', 'Rank', 'Student', 'Total', 'Max', '%', 'Grade'], ...data.sections.flatMap((s) => sectionResults(data, idx, s.id, exam.id).map((r) => [s.name, r.rank, r.student.full_name, r.total, r.max, r.pct.toFixed(1), r.grade]))]],
+    ['award', `${exam.name} results`, 'Merit list with percentage and grade for all classes', () => [['Class', 'Rank', 'Student', 'Total', 'Max', '%', 'Grade'], ...data.sections.filter((s) => s.stage !== 'pre').flatMap((s) => sectionResults(data, idx, s.id, exam.id).map((r) => [s.name, r.rank, r.student.full_name, r.total, r.max, r.pct.toFixed(1), r.grade]))]],
     ['users', 'Student strength', 'Class-wise boys, girls, transport and hostel counts', () => [['Class', 'Total', 'Girls', 'Boys', 'Transport', 'Hostel'], ...data.sections.map((s) => { const st = idx.studentsBySection[s.id]; return [s.name, st.length, st.filter((x) => x.gender === 'F').length, st.filter((x) => x.gender === 'M').length, st.filter((x) => x.route_id).length, st.filter((x) => x.hostel_room_id).length]; })]],
     ['desk', 'Visitor log', 'Front-office visitor book for today', () => [['Badge', 'Name', 'Phone', 'Purpose', 'Host', 'In', 'Out'], ...data.visitors.map((v) => [v.badge_no, v.name, v.phone, v.purpose, v.host, v.check_in, v.check_out])]],
     ['bus', 'Transport manifest', 'Students by route and pickup point', () => [['Route', 'Stop', 'Student', 'Class', 'Guardian phone'], ...data.students.filter((s) => s.route_id).map((s) => [idx.routes[s.route_id]?.code, idx.stops[s.stop_id]?.name, s.full_name, idx.sections[s.section_id].name, s.guardian_phone])]],

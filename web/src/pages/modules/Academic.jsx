@@ -5,6 +5,7 @@ import { PageHead, Card, Stat, StatusBadge, Avatar, Badge, Search, Seg, Tabs, Mo
 import { attendanceStats, attendanceOn, attendanceTrend, studentAttendance, reportCard, sectionResults, grade, daySchedule, todayDow, currentPeriod, pendingHomework, todayISO } from '../../lib/derive.js';
 import { DAYS, PERIODS } from '../../data/generate.js';
 import { Crest } from '../../components/Brand.jsx';
+import { STAGES, STREAMS, PRACTICAL, subjectCodesFor } from '../../data/classes.js';
 import { ChildSwitcher } from '../dashboards/Dashboards.jsx';
 import { subjectStyle } from '../dashboards/shared.jsx';
 
@@ -25,10 +26,11 @@ export function Students() {
   const { data, idx, role, notify } = useSchool();
   const [q, setQ] = useState('');
   const [sec, setSec] = useState('');
+  const [stage, setStage] = useState('');
   const [view, setView] = useState(null);
   const [adding, setAdding] = useState(false);
   const hostelOnly = role === 'warden';
-  const rows = data.students.filter((s) => (!sec || s.section_id === sec) && (!hostelOnly || s.hostel_room_id) &&
+  const rows = data.students.filter((s) => (!sec || s.section_id === sec) && (!stage || idx.sections[s.section_id].stage === stage) && (!hostelOnly || s.hostel_room_id) &&
     (!q || `${s.full_name} ${s.admission_no} ${s.guardian_name} ${s.guardian_phone}`.toLowerCase().includes(q.toLowerCase())));
   return (
     <div>
@@ -37,6 +39,7 @@ export function Students() {
       <Card pad={false}>
         <div className="card-h row wrap" style={{ justifyContent: 'flex-start' }}>
           <Search value={q} onChange={setQ} placeholder="Search name, admission no., parent or phone" style={{ flex: 1, minWidth: 220 }} />
+          <select className="select" style={{ width: 'auto' }} value={stage} onChange={(e) => { setStage(e.target.value); setSec(''); }} aria-label="Stage"><option value="">All stages (LKG–12)</option>{Object.values(STAGES).map((st) => <option key={st.key} value={st.key}>{st.label} · {st.range}</option>)}</select>
           <SectionSelect value={sec} onChange={setSec} all />
         </div>
         <div className="table-wrap">
@@ -133,28 +136,48 @@ export function Teachers() {
 /* ───────────── Classes ───────────── */
 export function Classes() {
   const { data, idx } = useSchool();
+  const [stage, setStage] = useState('all');
+  const shown = Object.values(STAGES).filter((st) => stage === 'all' || st.key === stage);
   return (
     <div>
-      <PageHead title="Classes & sections" sub={`${data.sections.length} sections · ${data.subjects.length} subjects`} actions={<button className="btn btn-primary"><Icon name="plus" size={16} /> Add section</button>} />
-      <div className="grid g-4">
-        {data.sections.map((s) => {
-          const st = idx.studentsBySection[s.id] || [];
-          const a = attendanceStats(attendanceOn(data, idx.today, s.id));
+      <PageHead title="Classes & sections" sub={`LKG to Class 12 · ${data.sections.length} sections · ${data.students.length} students`} actions={<button className="btn btn-primary"><Icon name="plus" size={16} /> Add section</button>} />
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', marginBottom: 16 }}>
+        {Object.values(STAGES).map((st) => {
+          const secs = data.sections.filter((x) => x.stage === st.key);
+          const n = secs.reduce((a, x) => a + (idx.studentsBySection[x.id] || []).length, 0);
           return (
-            <Card key={s.id} title={<div className="row" style={{ gap: 8 }}><span className="serif" style={{ fontSize: 22, fontWeight: 700, color: 'var(--brand-ink)' }}>{s.name}</span></div>} action={<Badge>{s.room}</Badge>}>
-              <div className="stack-sm small">
-                <div className="row between"><span className="muted">Class teacher</span><strong>{idx.teachers[s.class_teacher_id]?.full_name}</strong></div>
-                <div className="row between"><span className="muted">Strength</span><strong>{st.length} ({st.filter((x) => x.gender === 'F').length}G / {st.filter((x) => x.gender === 'M').length}B)</strong></div>
-                <div className="row between"><span className="muted">Present today</span><strong>{Math.round(a.pct)}%</strong></div>
-                <Progress value={a.pct} />
-              </div>
-            </Card>
+            <button key={st.key} className="card card-b" style={{ textAlign: 'left', cursor: 'pointer', borderColor: stage === st.key ? 'var(--brand)' : undefined }} onClick={() => setStage(stage === st.key ? 'all' : st.key)}>
+              <div className="row"><IconTile icon={st.icon} tone={st.tone} size={38} /><div><div className="strong">{st.label}</div><div className="xs muted">{st.range}</div></div></div>
+              <div className="row between small" style={{ marginTop: 10 }}><span className="muted">{secs.length} sections</span><strong>{n} students</strong></div>
+            </button>
           );
         })}
       </div>
-      <Card title="Subjects" style={{ marginTop: 16 }}>
-        <div className="row wrap" style={{ gap: 8 }}>{data.subjects.map((s) => <Badge key={s.id} tone="blue">{s.code} · {s.name}</Badge>)}</div>
-      </Card>
+      {shown.map((st) => (
+        <div key={st.key} style={{ marginBottom: 20 }}>
+          <div className="row between wrap" style={{ marginBottom: 10 }}>
+            <h2 className="row" style={{ gap: 8 }}><IconTile icon={st.icon} tone={st.tone} size={28} />{st.label} <span className="muted small">· {st.range}</span></h2>
+            <div className="row wrap" style={{ gap: 6 }}><Badge>{st.assessment}</Badge><Badge tone="blue">School day {st.day}</Badge></div>
+          </div>
+          <div className="grid g-4">
+            {data.sections.filter((x) => x.stage === st.key).map((s) => {
+              const list = idx.studentsBySection[s.id] || [];
+              const a = attendanceStats(attendanceOn(data, idx.today, s.id));
+              return (
+                <Card key={s.id} title={<span className="serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--brand-ink)' }}>{s.name}</span>} action={s.stage === 'senior' ? <Badge tone="navy">{STREAMS[s.section]}</Badge> : <Badge>{s.room}</Badge>}>
+                  <div className="stack-sm small">
+                    <div className="row between"><span className="muted">Class teacher</span><strong style={{ textAlign: 'right' }}>{idx.teachers[s.class_teacher_id]?.full_name}</strong></div>
+                    <div className="row between"><span className="muted">Strength</span><strong>{list.length} ({list.filter((x) => x.gender === 'F').length}G / {list.filter((x) => x.gender === 'M').length}B)</strong></div>
+                    <div className="row between"><span className="muted">Present today</span><strong>{Math.round(a.pct)}%</strong></div>
+                    <Progress value={a.pct} />
+                    <div className="xs muted">{subjectCodesFor(s).join(' · ')}</div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -411,25 +434,67 @@ function ExamSelect({ value, onChange }) {
 }
 
 function ResultsOverview() {
-  const { data, idx } = useSchool();
+  const { data, idx, actions, notify } = useSchool();
+  const [tab, setTab] = useState('merit');
   const [exam, setExam] = useState(data.exams[1].id);
-  const [sec, setSec] = useState(data.sections[4].id);
+  const graded = data.sections.filter((s) => s.stage !== 'pre');
+  const [sec, setSec] = useState((graded.find((s) => s.name === '8A') || graded[0]).id);
   const rows = sectionResults(data, idx, sec, exam);
-  const summary = data.sections.map((s) => { const r = sectionResults(data, idx, s.id, exam); return { s, avg: r.reduce((a, x) => a + x.pct, 0) / (r.length || 1) }; });
+  const summary = useMemo(() => graded.map((s) => { const r = sectionResults(data, idx, s.id, exam); return { s, avg: r.reduce((a, x) => a + x.pct, 0) / (r.length || 1) }; }), [data, idx, exam]);
   const subjects = rows[0]?.rows.map((r) => r.subject) || [];
+  const sec10 = graded.filter((s) => s.grade === 10);
+  const sec12 = graded.filter((s) => s.grade === 12);
+  const boardRows = [...sec10, ...sec12].flatMap((s) => (idx.studentsBySection[s.id] || []).map((st) => ({ st, s })));
+  const tenth = sec10.flatMap((s) => sectionResults(data, idx, s.id, exam).map((r) => ({ ...r, s })));
+  const streamOf = (r) => { const m = Object.fromEntries(r.rows.map((x) => [x.subject?.code, x.pct])); return (m.MAT || 0) >= 70 && (m.SCI || 0) >= 70 ? 'Science (PCM/PCB)' : r.pct >= 60 ? 'Commerce' : 'Humanities'; };
   return (
     <div>
-      <PageHead title="Exams & results" sub="Marks, grades and report cards" actions={<><ExamSelect value={exam} onChange={setExam} /><button className="btn btn-primary"><Icon name="send" size={16} /> Publish to parents</button></>} />
-      <div className="stack">
-        <Card title="Class averages"><Bars data={summary.map((x) => ({ label: x.s.name, value: Math.round(x.avg * 10) / 10 }))} format={(v) => `${Math.round(v)}`} highlightLast={false} /></Card>
-        <Card title={`Merit list — Class ${idx.sections[sec].name}`} action={<SectionSelect value={sec} onChange={setSec} />} pad={false}>
-          <div className="table-wrap"><table className="table">
-            <thead><tr><th className="num">Rank</th><th>Student</th>{subjects.map((s) => <th key={s.id} className="num">{s.code}</th>)}<th className="num">Total</th><th className="num">%</th><th>Grade</th></tr></thead>
-            <tbody>{rows.map((r) => (
-              <tr key={r.student.id}><td className="num strong">{r.rank}</td><td className="strong">{r.student.full_name}</td>{r.rows.map((m) => <td key={m.id} className="num" style={{ color: m.pct < 33 ? 'var(--danger)' : undefined }}>{m.marks_obtained}</td>)}<td className="num">{r.total}/{r.max}</td><td className="num strong">{r.pct.toFixed(1)}</td><td><Badge tone={r.pct >= 75 ? 'green' : r.pct >= 50 ? 'blue' : 'amber'}>{r.grade}</Badge></td></tr>
-            ))}</tbody>
-          </table></div>
-        </Card>
+      <PageHead title="Exams & report cards" sub="Class 1–12 marks and grades · LKG–UKG use the skill checklist" actions={<><ExamSelect value={exam} onChange={setExam} /><button className="btn btn-primary" onClick={() => { actions.push(['parent', 'student'], 'Report card published', `${data.exams.find((e) => e.id === exam)?.name} results are now available`, 'notice', ['push', 'whatsapp', 'email']); notify('Published — parents notified on app, WhatsApp & email'); }}><Icon name="send" size={16} /> Publish to parents</button></>} />
+      <Tabs tabs={[['merit', 'Merit list'], ['averages', 'Class averages'], ['board', 'Board exams (10 & 12)'], ['stream', 'Stream selection (10 → 11)'], ['schedule', 'Exam schedule']]} value={tab} onChange={setTab} />
+      <div className="stack" style={{ marginTop: 16 }}>
+        {tab === 'averages' && <Card title="Class averages" icon="chart" tone="blue"><Bars data={summary.map((x) => ({ label: x.s.name.replace(' ', ''), value: Math.round(x.avg) }))} format={(v) => `${v}`} highlightLast={false} /></Card>}
+        {tab === 'merit' && (
+          <Card title={`Merit list — Class ${idx.sections[sec].name}`} icon="medal" tone="violet" action={<select className="select" style={{ width: 'auto' }} value={sec} onChange={(e) => setSec(e.target.value)}>{graded.map((s) => <option key={s.id} value={s.id}>Class {s.name}</option>)}</select>} pad={false}>
+            <div className="table-wrap"><table className="table">
+              <thead><tr><th className="num">Rank</th><th>Student</th>{subjects.map((s) => <th key={s.id} className="num">{s.code}</th>)}<th className="num">Total</th><th className="num">%</th><th>Grade</th></tr></thead>
+              <tbody>{rows.map((r) => (
+                <tr key={r.student.id}><td className="num strong">{r.rank}</td><td className="strong">{r.student.full_name}</td>{r.rows.map((m) => <td key={m.id} className="num" style={{ color: m.pct < 33 ? 'var(--danger)' : undefined }}>{m.marks_obtained}</td>)}<td className="num">{r.total}/{r.max}</td><td className="num strong">{r.pct.toFixed(1)}</td><td><Badge tone={r.pct >= 75 ? 'green' : r.pct >= 50 ? 'blue' : 'amber'}>{r.grade}</Badge></td></tr>
+              ))}</tbody>
+            </table></div>
+          </Card>
+        )}
+        {tab === 'board' && (
+          <>
+            <div className="grid g-4">
+              <Stat label="Class 10 candidates" value={sec10.reduce((a, s) => a + (idx.studentsBySection[s.id] || []).length, 0)} icon="users" />
+              <Stat label="Class 12 candidates" value={sec12.reduce((a, s) => a + (idx.studentsBySection[s.id] || []).length, 0)} icon="cap" tone="navy" />
+              <Stat label="Registration (LOC)" value="Submitted" icon="badge" tone="green" foot="Board portal export ready" />
+              <Stat label="Pre-board" value={fmtDate(data.exams[2]?.starts_on)} icon="calendar" tone="amber" />
+            </div>
+            <Card title="List of candidates — board registration" icon="clip-list" tone="navy" pad={false} action={<button className="btn btn-sm" onClick={() => notify('LOC file exported in board format')}><Icon name="download" size={14} /> Export LOC</button>}>
+              <div className="table-wrap" style={{ maxHeight: 420 }}><table className="table">
+                <thead><tr><th>Student</th><th>Class</th><th>Adm. no.</th><th>DOB</th><th>Subjects</th><th>Documents</th></tr></thead>
+                <tbody>{boardRows.map(({ st, s }, i) => <tr key={st.id}><td className="strong small">{st.full_name}</td><td>{s.name}</td><td className="small tnum">{st.admission_no}</td><td className="small">{fmtDate(st.dob, { day: 'numeric', month: 'short', year: 'numeric' })}</td><td className="xs">{(sectionResults(data, idx, s.id, exam)[0]?.rows || []).map((x) => x.subject?.code).join(', ')}</td><td><Badge tone={i % 9 === 4 ? 'amber' : 'green'}>{i % 9 === 4 ? 'Photo pending' : 'Complete'}</Badge></td></tr>)}</tbody>
+              </table></div>
+            </Card>
+          </>
+        )}
+        {tab === 'stream' && (
+          <Card title="Suggested streams for Class 11 (based on Class 10 performance)" icon="route" tone="teal" pad={false} action={<button className="btn btn-sm btn-primary" onClick={() => { actions.push(['parent'], 'Stream counselling', 'Suggested stream for Class 11 is ready — book a counselling slot.', 'notice', ['push', 'whatsapp']); notify('Stream suggestions shared with parents'); }}>Share with parents</button>}>
+            <div className="table-wrap"><table className="table">
+              <thead><tr><th>Student</th><th>Class</th><th className="num">Overall %</th><th className="num">Maths</th><th className="num">Science</th><th>Suggested stream</th></tr></thead>
+              <tbody>{tenth.sort((a, b) => b.pct - a.pct).map((r) => { const m = Object.fromEntries(r.rows.map((x) => [x.subject?.code, x.pct])); const st = streamOf(r); return <tr key={r.student.id}><td className="strong small">{r.student.full_name}</td><td>{r.s.name}</td><td className="num strong">{r.pct.toFixed(1)}</td><td className="num">{Math.round(m.MAT || 0)}</td><td className="num">{Math.round(m.SCI || 0)}</td><td><Badge tone={st.startsWith('Science') ? 'violet' : st === 'Commerce' ? 'blue' : 'teal'}>{st}</Badge></td></tr>; })}</tbody>
+            </table></div>
+          </Card>
+        )}
+        {tab === 'schedule' && (
+          <Card title="Exam schedule by stage" icon="calendar" tone="teal" pad={false}>
+            <div className="table-wrap"><table className="table">
+              <thead><tr><th>Stage</th><th>Classes</th><th>Assessment</th><th>Next</th></tr></thead>
+              <tbody>{Object.values(STAGES).map((st) => <tr key={st.key}><td className="strong"><span className="row" style={{ gap: 8 }}><IconTile icon={st.icon} tone={st.tone} size={28} />{st.label}</span></td><td>{st.range}</td><td className="small">{st.assessment}</td><td className="small">{st.key === 'pre' ? 'Skill review — end of term' : st.key === 'secondary' || st.key === 'senior' ? `Pre-board · ${fmtDate(data.exams[2]?.starts_on)}` : `${data.exams[2]?.name} · ${fmtDate(data.exams[2]?.starts_on)}`}</td></tr>)}</tbody>
+            </table></div>
+          </Card>
+        )}
       </div>
     </div>
   );
@@ -476,6 +541,7 @@ function ReportCardView() {
   const sec = idx.sections[s.section_id];
   const ex = data.exams.find((e) => e.id === exam);
   const school = data.school;
+  if (sec.stage === 'pre') return <SkillReport s={s} sec={sec} role={role} />;
   return (
     <div>
       <PageHead title="Results" sub={`${s.full_name} · Class ${sec.name}`} actions={<>{role === 'parent' && <ChildSwitcher />}<ExamSelect value={exam} onChange={setExam} /><button className="btn no-print" onClick={() => window.print()}><Icon name="download" size={16} /> Download</button></>} />
@@ -493,7 +559,7 @@ function ReportCardView() {
         </div>
         <div className="table-wrap"><table className="table">
           <thead><tr><th>Subject</th><th className="num">Max</th><th className="num">Obtained</th><th className="num">%</th><th>Grade</th></tr></thead>
-          <tbody>{rc.rows.map((r) => <tr key={r.id}><td className="strong">{r.subject?.name}</td><td className="num">{r.max_marks}</td><td className="num">{r.marks_obtained}</td><td className="num">{r.pct.toFixed(0)}</td><td><Badge tone={r.pct >= 75 ? 'green' : r.pct >= 50 ? 'blue' : 'amber'}>{grade(r.pct)}</Badge></td></tr>)}
+          <tbody>{rc.rows.map((r) => <tr key={r.id}><td className="strong">{r.subject?.name}{sec.stage === 'senior' && PRACTICAL.includes(r.subject?.code) && <span className="xs muted"> · theory (practical 30 separately)</span>}</td><td className="num">{r.max_marks}</td><td className="num">{r.marks_obtained}</td><td className="num">{r.pct.toFixed(0)}</td><td><Badge tone={r.pct >= 75 ? 'green' : r.pct >= 50 ? 'blue' : 'amber'}>{grade(r.pct)}</Badge></td></tr>)}
             <tr><td className="strong">Total</td><td className="num strong">{rc.max}</td><td className="num strong">{rc.total}</td><td className="num strong">{rc.pct.toFixed(1)}</td><td><Badge tone="navy">{rc.grade}</Badge></td></tr>
           </tbody>
         </table></div>
@@ -534,4 +600,31 @@ export function smartRemark(s, rc, attPct) {
   const tone = rc.pct >= 85 ? `${first} has delivered an excellent performance this term` : rc.pct >= 70 ? `${first} has shown consistent effort and good understanding this term` : rc.pct >= 55 ? `${first} is progressing steadily` : `${first} needs regular support and practice to reach ${his} potential`;
   const att = attPct >= 95 ? 'Attendance has been exemplary.' : attPct >= 85 ? 'Attendance is regular.' : 'Irregular attendance is affecting learning; please ensure daily attendance.';
   return `${tone}. ${he} shows particular strength in ${best}${weak && weak !== best ? `, while ${weak} needs more practice at home` : ''}. ${att} Keep it up!`;
+}
+
+/** Pre-primary progress report — skills and observations, no marks. */
+function SkillReport({ s, sec, role }) {
+  const { data, idx } = useSchool();
+  const skills = data.skills?.[s.id] || [];
+  const diary = data.diary?.[s.id] || [];
+  const LV = { Emerging: 1, Developing: 2, Proficient: 3, Mastered: 4 };
+  const school = data.school;
+  return (
+    <div>
+      <PageHead title="Progress report" sub={`${s.full_name} · ${sec.name} · skill-based (no exams in pre-primary)`} actions={<>{role === 'parent' && <ChildSwitcher />}<button className="btn no-print" onClick={() => window.print()}><Icon name="download" size={16} /> Download</button></>} />
+      <div className="grid g-main" style={{ alignItems: 'start' }}>
+        <div className="report">
+          <div className="report-head"><Crest school={school} size={50} /><div><div className="serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--brand-ink)' }}>{school.name}</div><div className="strong small" style={{ color: 'var(--brand)' }}>Pre-primary Progress Report · Term 1 · AY {school.academic_year}</div></div></div>
+          <div className="card-b row wrap" style={{ gap: 24, borderBottom: '1px solid var(--line)' }}>{[['Child', s.full_name], ['Class', sec.name], ['Class teacher', idx.teachers[sec.class_teacher_id]?.full_name]].map(([k, v]) => <div key={k}><div className="xs muted strong">{k}</div><div className="small strong">{v}</div></div>)}</div>
+          <table className="table"><thead><tr><th>Development area</th><th style={{ width: 220 }}>Level</th><th>Teacher’s observation</th></tr></thead>
+            <tbody>{skills.map((k) => <tr key={k.area}><td className="strong small">{k.area}</td><td><div className="row" style={{ gap: 3 }}>{[1, 2, 3, 4].map((n) => <span key={n} style={{ width: 22, height: 8, borderRadius: 3, background: n <= LV[k.level] ? 'var(--brand)' : '#e3e9f1' }} />)}<span className="xs strong" style={{ marginLeft: 6 }}>{k.level}</span></div></td><td className="small">{k.note}</td></tr>)}</tbody>
+          </table>
+          <div className="card-b small" style={{ borderTop: '1px solid var(--line)' }}><strong>Teacher’s note:</strong> {s.full_name.split(' ')[0]} is settling in happily, enjoys group activities and is building confidence with letters and numbers. Please read a picture book together every evening.</div>
+        </div>
+        <Card title="Daily diary — this week" icon="sun" tone="amber" pad={false}>
+          <div className="list">{diary.map((d) => <div key={d.date}><div className="row between"><strong className="small">{fmtDate(d.date, { weekday: 'short', day: 'numeric', month: 'short' })}</strong><Badge tone="amber">{d.mood}</Badge></div><div className="xs muted">{d.activity} · {d.meal} · {d.photos} photos</div></div>)}</div>
+        </Card>
+      </div>
+    </div>
+  );
 }

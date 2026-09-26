@@ -20,7 +20,7 @@ export function Insights() {
   const rows = useMemo(() => {
     const feeBy = {};
     data.fee_invoices.forEach((f) => { if (f.status === 'overdue') feeBy[f.student_id] = (feeBy[f.student_id] || 0) + Number(f.amount); });
-    return data.students.map((s) => {
+    return data.students.filter((s) => idx.sections[s.section_id].stage !== 'pre').map((s) => {
       const att = studentAttendance(data, s.id);
       const rc = reportCard(data, idx, s.id, exam.id);
       const reasons = [];
@@ -31,7 +31,7 @@ export function Insights() {
       return { s, att, rc, reasons, risk };
     }).filter((r) => r.reasons.length).sort((a, b) => b.risk - a.risk);
   }, [data, idx, exam]);
-  const toppers = useMemo(() => data.students.map((s) => ({ s, rc: reportCard(data, idx, s.id, exam.id) })).sort((a, b) => b.rc.pct - a.rc.pct).slice(0, 5), [data, idx, exam]);
+  const toppers = useMemo(() => data.students.filter((s) => idx.sections[s.section_id].stage !== 'pre').map((s) => ({ s, rc: reportCard(data, idx, s.id, exam.id) })).sort((a, b) => b.rc.pct - a.rc.pct).slice(0, 5), [data, idx, exam]);
   const lowAtt = rows.filter((r) => r.att.pct < 85).length;
   const lowMarks = rows.filter((r) => r.rc.pct < 55).length;
   const fee = feeSummary(data.fee_invoices);
@@ -241,6 +241,7 @@ export function Communication() {
     const chosen = Object.keys(ch).filter((k) => ch[k]);
     actions.update('comm_logs', (rows) => [...chosen.map((c, i) => ({ id: `cl-new-${Date.now()}-${i}`, at: new Date().toISOString(), channel: c, template: 'Broadcast', to: aud, status: 'sent' })), ...rows]);
     notify(`Sent to ${counts[aud]} recipients via ${chosen.map((c) => CHANNEL[c].label).join(', ')}`);
+    actions.push(['all'], 'School announcement', msg.slice(0, 90), 'notice', []);
     setTab('log');
   };
   return (
@@ -318,6 +319,7 @@ export function Messages() {
   const send = () => {
     if (!text.trim()) return;
     actions.update('threads', (rows) => rows.map((t) => (t.id === sel ? { ...t, messages: [...t.messages, { from: me, text, at: new Date().toISOString() }] } : t)));
+    actions.push([me === 'parent' ? 'teacher' : 'parent'], 'New message', text.slice(0, 80), 'notice', ['push']);
     setText('');
   };
   return (
@@ -356,7 +358,7 @@ export function PTM() {
   const s = role === 'parent' ? persona.child.section_id : sec;
   const slots = data.ptm_slots.filter((p) => p.section_id === s);
   const mine = role === 'parent' ? slots.find((p) => p.student_id === persona.child.id) : null;
-  const book = (p) => { actions.update('ptm_slots', (rows) => rows.map((x) => (x.student_id === persona.child.id ? { ...x, student_id: null } : x.id === p.id ? { ...x, student_id: persona.child.id } : x))); notify(`PTM booked at ${p.time} — confirmation on WhatsApp`); };
+  const book = (p) => { actions.update('ptm_slots', (rows) => rows.map((x) => (x.student_id === persona.child.id ? { ...x, student_id: null } : x.id === p.id ? { ...x, student_id: persona.child.id } : x))); notify(`PTM booked at ${p.time} — confirmation on WhatsApp`); actions.push(['teacher', 'parent'], 'PTM slot booked', `${persona.child.full_name} · ${p.time} · ${p.mode}`, 'notice'); };
   return (
     <div>
       <PageHead title="Parent–Teacher Meeting" sub={`${fmtDate(slots[0]?.date, { weekday: 'long', day: 'numeric', month: 'long' })} · Class ${idx.sections[s].name} · ${idx.teachers[idx.sections[s].class_teacher_id]?.full_name}`} actions={role === 'parent' ? <ChildSwitcher /> : role !== 'teacher' && <select className="select" style={{ width: 'auto' }} value={sec} onChange={(e) => setSec(e.target.value)}>{data.sections.map((x) => <option key={x.id} value={x.id}>Class {x.name}</option>)}</select>} />
@@ -426,12 +428,14 @@ export function GatePass() {
     if (!g) { notify('Invalid or expired OTP'); return; }
     actions.update('gate_passes', (rows) => rows.map((x) => (x.id === g.id ? { ...x, status: 'verified', verified_at: new Date().toISOString() } : x)));
     notify(`Verified — ${idx.students[g.student_id].full_name} released to ${g.pickup_name}`);
+    actions.push(['parent', 'teacher'], 'Child released at gate', `${idx.students[g.student_id].full_name} left with ${g.pickup_name} (OTP verified)`, 'attendance', ['push', 'whatsapp', 'sms']);
     setOtp('');
   };
   const request = () => {
     const code = String(1000 + Math.floor(Math.random() * 8999));
     actions.update('gate_passes', (rows) => [{ id: `gp-${Date.now()}`, student_id: persona.child.id, ...f, otp: code, requested_at: new Date().toISOString(), status: 'pending' }, ...rows]);
     notify(`Gate pass created — OTP ${code} sent on WhatsApp`);
+    actions.push(['scanner', 'teacher'], 'Early pickup requested', `${persona.child.full_name} · ${f.pickup_name} (${f.pickup_by})`, 'attendance');
   };
   return (
     <div>
