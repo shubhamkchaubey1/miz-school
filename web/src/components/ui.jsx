@@ -56,7 +56,7 @@ const ICON_TONE = {
   message: 'rose', chat: 'rose', coffee: 'amber', food: 'amber', receipt: 'navy', settings: 'navy', layers: 'indigo',
   building: 'navy', trend: 'green', megaphone: 'rose', bell: 'rose', qr: 'navy', chart: 'blue', coins: 'green',
   route: 'amber', shield: 'navy', tag: 'violet', globe: 'teal', home: 'blue', 'clip-check': 'green', 'user-plus': 'blue',
-  scan: 'green', package: 'amber', health: 'green', 'bell-ring': 'red', 'map-pin': 'rose', 'cal-check': 'teal', timer: 'navy',
+  scan: 'green', package: 'amber', health: 'green', 'bell-ring': 'red', 'map-pin': 'rose', timer: 'navy',
 };
 export const toneOf = (icon, tone) => TONES[tone] || TONES[ICON_TONE[icon]] || TONES.blue;
 
