@@ -142,7 +142,7 @@ function Notifications({ go }) {
 }
 
 function ProfileMenu({ go }) {
-  const { persona, slug, data } = useSchool();
+  const { persona, slug } = useSchool();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useOutside(ref, () => setOpen(false));
@@ -165,7 +165,6 @@ function ProfileMenu({ go }) {
             <button className="sb-link" onClick={() => navigate(`/demo?school=${slug}`)}><Icon name="users" size={16} /> Switch profile</button>
             <button className="sb-link" onClick={() => navigate(`/s/${slug}/login`)}><Icon name="logout" size={16} /> Sign out</button>
           </div>
-          <div className="card-f xs muted">Data source: {data.meta.source === 'supabase' ? 'Supabase (live)' : 'Built-in demo data'}</div>
         </div>
       )}
     </div>
