@@ -202,7 +202,7 @@ export function generateExtra(base) {
   // ── Certificates ──
   const certificates = Array.from({ length: 8 }, (_, i) => {
     const s = students[int(0, students.length - 1)];
-    return { id: `ct-${i}`, type: pick(['Bonafide', 'Transfer Certificate', 'Character', 'Fee Paid', 'Bonafide']), student_id: s.id, requested_on: iso(addDays(today, -int(0, 12))), status: pick(['issued', 'issued', 'pending']), serial: `${P}/CERT/${2026}/${pad(301 + i, 4)}` };
+    return { id: `ct-${i}`, type: pick(['Bonafide', 'Transfer Certificate', 'Character', 'Fee Paid', 'Bonafide']), student_id: s.id, requested_on: iso(addDays(today, -int(0, 12))), status: i < 2 ? 'pending' : 'issued', serial: i < 2 ? '—' : `${P}/CERT/${2026}/${pad(301 + i, 4)}`, issued_on: i < 2 ? null : iso(addDays(today, -int(0, 12))), purpose: i < 2 ? pick(['Passport', 'Bank account', 'Scholarship']) : null };
   });
 
   // ── Payroll / HR ──
@@ -396,5 +396,41 @@ export function generateExtra(base) {
     return row;
   });
 
-  return { skills, diary, comm_templates, automations, comm_logs, comm_stats, branches, admissions, books, book_loans, question_bank, online_tests, test_attempts, lesson_plans, ptm_slots, threads, gate_passes, health_visits, health_profiles, certificates, payroll, staff_support, inventory, calendar, co_scholastic, achievements, student_roles, elections, alloc_meta, alloc_queries, alloc_log, staff_attendance, substitutions, sub_week };
+  // ── Audit log (append-only) & backups ──
+  const devices = [['Chrome · Windows', '103.87.14.22'], ['Miz app · Android', '49.36.112.8'], ['Miz app · iPhone', '106.51.77.140'], ['Safari · macOS', '103.87.14.31'], ['Chrome · Android', '157.34.9.201']];
+  const actors = [
+    ['Rohit Bhatnagar', 'school_admin'], [school.principal_name, 'principal'], ['Vinod Khandelwal', 'accountant'], ['Kiran Sethi', 'reception'],
+    [ct.full_name, 'teacher'], [teachers[8]?.full_name, 'teacher'], [teachers[20]?.full_name, 'teacher'], ['Sunita Mathur', 'librarian'],
+  ];
+  const auditTemplates = [
+    ['auth', 'security', 'Signed in with OTP'],
+    ['attendance', 'change', () => `Marked attendance · Class ${pick(sections).name}`],
+    ['fees', 'change', () => { const f = pick(base.fee_invoices.filter((x) => x.status === 'paid')); return `Fee received · ${students.find((x) => x.id === f.student_id)?.full_name} · ₹${Number(f.amount).toLocaleString('en-IN')} · ${f.method}`; }],
+    ['fees', 'change', () => `Printed receipt ${pick(base.fee_invoices.filter((x) => x.receipt_no)).receipt_no}`],
+    ['results', 'change', () => `Saved marks · ${pick(['Mathematics', 'Science', 'English', 'Hindi', 'Social Science'])} · Class ${pick(sections.filter((x) => x.stage !== 'pre')).name}`],
+    ['homework', 'change', () => `Posted homework · Class ${pick(sections).name}`],
+    ['certificates', 'change', () => `Issued ${pick(['Bonafide', 'Character', 'Fee Paid'])} certificate · ${pick(students).full_name}`],
+    ['students', 'change', () => `Updated phone number · ${pick(students).full_name}`],
+    ['notices', 'change', () => `Published notice “${pick(['PTM on Saturday', 'Sports Day practice', 'Holiday on 2 October', 'Q3 fee reminder'])}”`],
+    ['reports', 'export', () => `Exported ${pick(['fee defaulters', 'attendance register', 'marks sheet', 'student list'])} (Excel)`],
+    ['leave', 'change', () => `Leave approved · ${pick(students).full_name}`],
+  ];
+  const audit_log = [];
+  for (let i = 0; i < 90; i++) {
+    const [user, role] = pick(actors);
+    const tpl = role === 'accountant' ? pick(auditTemplates.filter((t) => ['fees', 'reports', 'auth'].includes(t[0]))) : role === 'teacher' ? pick(auditTemplates.filter((t) => ['attendance', 'results', 'homework', 'auth', 'leave'].includes(t[0]))) : role === 'reception' ? pick(auditTemplates.filter((t) => ['certificates', 'students', 'auth'].includes(t[0]))) : role === 'librarian' ? auditTemplates[0] : pick(auditTemplates);
+    const [dv, ip] = role === 'teacher' ? pick(devices.slice(1)) : pick(devices);
+    const at = new Date(now - (i * 2.6 + r() * 2) * 3600e3);
+    audit_log.push({ id: `au-s-${i}`, at: at.toISOString(), user, role, module: tpl[0], kind: tpl[1], action: typeof tpl[2] === 'function' ? tpl[2]() : tpl[2], device: dv, ip });
+  }
+  audit_log.splice(5, 0, { id: 'au-sec-1', at: new Date(now - 14 * 3600e3).toISOString(), user: 'Unknown', role: 'teacher', module: 'auth', kind: 'security', action: `3 wrong OTP attempts for ${teachers[12]?.phone} — login locked for 15 min`, device: 'Chrome · Android', ip: '182.64.211.9' });
+  audit_log.splice(9, 0, { id: 'au-sec-2', at: new Date(now - 22 * 3600e3).toISOString(), user: 'Rohit Bhatnagar', role: 'school_admin', module: 'permissions', kind: 'security', action: 'Access changed · Accountant · Reports: View → Edit', device: 'Chrome · Windows', ip: '103.87.14.22' });
+  audit_log.splice(16, 0, { id: 'au-sec-3', at: new Date(now - 40 * 3600e3).toISOString(), user: school.principal_name, role: 'principal', module: 'results', kind: 'change', action: 'Published Half Yearly results — parents notified (WhatsApp + app)', device: 'Safari · macOS', ip: '103.87.14.31' });
+  audit_log.sort((a, b) => b.at.localeCompare(a.at));
+  const backups = Array.from({ length: 14 }, (_, i) => {
+    const d = addDays(today, -i); d.setHours(2, 0, 0, 0);
+    return { id: `bk-${i}`, at: d.toISOString(), kind: i % 7 === 0 ? 'Weekly full' : 'Daily', size_mb: Math.round((36 + i * -0.4 + r() * 2) * 10) / 10, status: 'verified', location: 'Mumbai (ap-south-1) + Hyderabad copy', by: 'Automatic' };
+  });
+
+  return { skills, diary, comm_templates, automations, comm_logs, comm_stats, branches, admissions, books, book_loans, question_bank, online_tests, test_attempts, lesson_plans, ptm_slots, threads, gate_passes, health_visits, health_profiles, certificates, payroll, staff_support, inventory, calendar, co_scholastic, achievements, student_roles, elections, alloc_meta, alloc_queries, alloc_log, staff_attendance, substitutions, sub_week, audit_log, backups };
 }
