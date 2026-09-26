@@ -1,4 +1,5 @@
 import { generateExtra } from './extra.js';
+import { SUBJECTS as ALL_SUBJECTS, CLASS_LIST, stageOfGrade, sectionName, subjectCodesFor, examCodesFor, tuitionFor } from './classes.js';
 // Deterministic demo-data generator. Produces the exact same row shapes as the
 // Supabase tables in /supabase/migrations, so screens work identically on
 // local demo data and on live Supabase data.
@@ -9,16 +10,7 @@ const LAST = ['Sharma', 'Verma', 'Gupta', 'Agarwal', 'Singh', 'Mehta', 'Jain', '
 const PARENT_M = ['Rajesh', 'Sanjay', 'Amit', 'Vikas', 'Manoj', 'Suresh', 'Deepak', 'Rakesh', 'Anil', 'Vinod', 'Ashok', 'Pankaj'];
 const PARENT_F = ['Sunita', 'Pooja', 'Neha', 'Kavita', 'Rekha', 'Anjali', 'Priya', 'Seema', 'Nidhi', 'Ritu', 'Shalini', 'Monika'];
 
-export const SUBJECTS = [
-  { code: 'ENG', name: 'English' },
-  { code: 'HIN', name: 'Hindi' },
-  { code: 'MAT', name: 'Mathematics' },
-  { code: 'SCI', name: 'Science' },
-  { code: 'SST', name: 'Social Science' },
-  { code: 'CS', name: 'Computer Science' },
-  { code: 'SAN', name: 'Sanskrit' },
-  { code: 'PE', name: 'Physical Education' },
-];
+export const SUBJECTS = ALL_SUBJECTS;
 
 export const PERIODS = [
   { period: 1, start: '08:00', end: '08:45' },
@@ -65,45 +57,56 @@ export function generateSchoolData(school) {
   const P = school.slug.slice(0, 3).toUpperCase();
 
   const subjects = SUBJECTS.map((s, i) => ({ id: `${school.slug}-sub-${i + 1}`, ...s }));
+  const subByCode = Object.fromEntries(subjects.map((x) => [x.code, x]));
 
-  // Teachers — 2 per core subject + specialists
+  // Teachers — staffing for LKG to 12
   const teachers = [];
-  const tSubjects = [0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 6, 7, 2, 3, 0];
-  const titles = ['Mr.', 'Ms.', 'Mrs.'];
-  tSubjects.forEach((si, i) => {
-    const female = r() > 0.4;
-    const first = female ? pick(PARENT_F) : pick(PARENT_M);
-    const last = pick(LAST);
-    teachers.push({
-      id: `${school.slug}-tch-${i + 1}`,
-      employee_code: `${P}-T${pad(i + 1, 3)}`,
-      full_name: `${female ? pick(['Ms.', 'Mrs.']) : 'Mr.'} ${first} ${last}`,
-      gender: female ? 'F' : 'M',
-      subject_id: subjects[si].id,
-      designation: i < 4 ? 'PGT' : i < 12 ? 'TGT' : 'PRT',
-      phone: phone(),
-      email: `${first.toLowerCase()}.${last.toLowerCase()}@${school.slug}.demo.mizschool.app`,
-      joined_on: `${int(2008, 2024)}-${pad(int(1, 12))}-01`,
-      status: 'active',
-    });
-  });
-  void titles;
-
-  // Sections — grades 6–10, A & B
-  const sections = [];
-  let ti = 0;
-  for (let g = 6; g <= 10; g++) {
-    for (const s of ['A', 'B']) {
-      sections.push({
-        id: `${school.slug}-sec-${g}${s}`,
-        grade: g,
-        section: s,
-        name: `${g}${s}`,
-        class_teacher_id: teachers[ti++ % teachers.length].id,
-        room: `${g < 9 ? 'Block A' : 'Block B'} · ${g}0${s === 'A' ? 1 : 2}`,
+  const STAFF = [
+    ['ENG', 'NTT', 4], ['MAT', 'TGT', 1], ['ENG', 'TGT', 3], ['HIN', 'TGT', 3], ['MAT', 'TGT', 3], ['EVS', 'PRT', 4], ['SCI', 'TGT', 3],
+    ['SST', 'TGT', 3], ['SAN', 'TGT', 1], ['CS', 'TGT', 2], ['ART', 'PRT', 1], ['MUS', 'PRT', 1], ['PE', 'TGT', 2],
+    ['PHY', 'PGT', 1], ['CHE', 'PGT', 1], ['BIO', 'PGT', 1], ['MAT', 'PGT', 1], ['ENG', 'PGT', 1], ['ACC', 'PGT', 1], ['BST', 'PGT', 1],
+    ['ECO', 'PGT', 1], ['HIS', 'PGT', 1], ['POL', 'PGT', 1], ['GEO', 'PGT', 1],
+  ];
+  STAFF.forEach(([code, designation, n]) => {
+    for (let k = 0; k < n; k++) {
+      const i = teachers.length;
+      const female = designation === 'NTT' || designation === 'PRT' ? r() > 0.1 : r() > 0.4;
+      const first = female ? pick(PARENT_F) : pick(PARENT_M);
+      const last = pick(LAST);
+      teachers.push({
+        id: `${school.slug}-tch-${i + 1}`,
+        employee_code: `${P}-T${pad(i + 1, 3)}`,
+        full_name: `${female ? pick(['Ms.', 'Mrs.']) : 'Mr.'} ${first} ${last}`,
+        gender: female ? 'F' : 'M',
+        subject_id: subByCode[code].id,
+        designation,
+        phone: phone(),
+        email: `${first.toLowerCase()}.${last.toLowerCase()}@${school.slug}.demo.mizschool.app`,
+        joined_on: `${int(2008, 2024)}-${pad(int(1, 12))}-01`,
+        status: 'active',
       });
     }
-  }
+  });
+
+  // Sections — LKG to 12 (A/B; streams in 11–12)
+  const sections = [];
+  const nttPool = teachers.filter((t) => t.designation === 'NTT');
+  const pgtPool = teachers.filter((t) => t.designation === 'PGT');
+  const otherPool = teachers.filter((t) => t.designation !== 'NTT' && t.designation !== 'PGT');
+  let ci = 0; let pi = 0; let ni = 0;
+  CLASS_LIST.forEach(({ grade: g, sections: secs }) => {
+    secs.forEach((sx) => {
+      const stage = stageOfGrade(g);
+      const name = sectionName(g, sx);
+      const ct = stage === 'pre' ? nttPool[ni++ % nttPool.length] : stage === 'senior' ? pgtPool[pi++ % pgtPool.length] : name === '8A' ? otherPool[0] : otherPool[1 + (ci++ % (otherPool.length - 1))];
+      sections.push({
+        id: `${school.slug}-sec-${name.replace(/\W/g, '')}`,
+        grade: g, section: sx, name, stage,
+        class_teacher_id: ct.id,
+        room: stage === 'pre' ? `Kids Block · ${name}` : `${g <= 5 ? 'Block A' : g <= 10 ? 'Block B' : 'Senior Wing'} · ${g}0${sx === 'A' || sx === 'Sci' ? 1 : sx === 'B' || sx === 'Com' ? 2 : 3}`,
+      });
+    });
+  });
 
   // Transport
   const vehicles = Array.from({ length: 6 }, (_, i) => ({
@@ -163,7 +166,8 @@ export function generateSchoolData(school) {
   const students = [];
   let adm = 4100 + school.seed * 10;
   sections.forEach((sec) => {
-    for (let k = 0; k < 22; k++) {
+    const count = sec.stage === 'pre' || sec.stage === 'senior' ? 16 : sec.stage === 'primary' ? 18 : 20;
+    for (let k = 0; k < count; k++) {
       const female = r() > 0.5;
       const last = pick(LAST);
       const first = female ? pick(FIRST_F) : pick(FIRST_M);
@@ -171,11 +175,11 @@ export function generateSchoolData(school) {
       const stops = route ? route_stops.filter((s) => s.route_id === route.id && s.seq < 7) : [];
       students.push({
         id: `${sec.id}-stu-${k + 1}`,
-        admission_no: `${P}/${2026 - (sec.grade - 6)}/${adm++}`,
+        admission_no: `${P}/${2026 - Math.max(0, sec.grade + 1) % 6}/${adm++}`,
         roll_no: 0,
         full_name: `${first} ${last}`,
         gender: female ? 'F' : 'M',
-        dob: `${2026 - sec.grade - 6}-${pad(int(1, 12))}-${pad(int(1, 28))}`,
+        dob: `${2026 - sec.grade - 5}-${pad(int(1, 12))}-${pad(int(1, 28))}`,
         section_id: sec.id,
         guardian_name: `${r() > 0.3 ? 'Mr.' : 'Mrs.'} ${r() > 0.3 ? pick(PARENT_M) : pick(PARENT_F)} ${last}`,
         guardian_phone: phone(),
@@ -197,14 +201,14 @@ export function generateSchoolData(school) {
   });
   // Hostellers: a few senior students
   const activeRooms = rooms.filter((x) => x.status === 'active');
-  students.filter((s) => s.section_id.endsWith('10A') || s.section_id.endsWith('9B')).slice(0, 26).forEach((s, i) => {
+  students.filter((s) => { const g = sections.find((x) => x.id === s.section_id).grade; return g >= 9; }).filter((_, i) => i % 5 === 0).slice(0, 30).forEach((s, i) => {
     const pool = activeRooms.filter((rm) => (s.gender === 'M' ? rm.hostel_id === hostels[0].id : rm.hostel_id === hostels[1].id));
     s.hostel_room_id = pool[i % pool.length].id;
   });
 
   // Demo family: sibling pair shares a guardian (used by the Parent profile)
   const kidA = students.find((s) => s.section_id.endsWith('8A') && s.roll_no === 3);
-  const kidB = students.find((s) => s.section_id.endsWith('6B') && s.roll_no === 5);
+  const kidB = students.find((s) => s.section_id.endsWith('UKGB') && s.roll_no === 5);
   kidB.full_name = `${kidB.gender === 'F' ? FIRST_F[3] : FIRST_M[4]} ${kidA.full_name.split(' ')[1]}`;
   kidB.guardian_name = kidA.guardian_name;
   kidB.guardian_phone = kidA.guardian_phone;
@@ -229,14 +233,16 @@ export function generateSchoolData(school) {
   const timetable_slots = [];
   const teachersBySubject = (sid) => teachers.filter((t) => t.subject_id === sid);
   sections.forEach((sec, si) => {
+    const codes = subjectCodesFor(sec);
+    const ct = teachers.find((t) => t.id === sec.class_teacher_id);
     for (let day = 1; day <= 6; day++) {
-      const periods = day === 6 ? 4 : 7;
+      const periods = sec.stage === 'pre' ? (day === 6 ? 3 : 5) : day === 6 ? 4 : 7;
       for (let p = 1; p <= periods; p++) {
-        const sub = subjects[(si + day * 3 + p) % subjects.length];
-        const pool = teachersBySubject(sub.id);
-        const t = pool[(si + p) % pool.length];
+        const sub = subByCode[codes[(si + day * 3 + p) % codes.length]];
+        const pool = sec.stage === 'pre' ? [ct] : teachersBySubject(sub.id).filter((t) => (sec.stage === 'senior' ? t.designation === 'PGT' : t.designation !== 'PGT'));
+        const t = (pool.length ? pool : teachersBySubject(sub.id).length ? teachersBySubject(sub.id) : [ct])[(si + p) % (pool.length || 1)] || ct;
         const pr = PERIODS[p - 1];
-        timetable_slots.push({ id: `${sec.id}-d${day}p${p}`, section_id: sec.id, day, period: p, start_time: pr.start, end_time: pr.end, subject_id: sub.id, teacher_id: t.id, room: sub.code === 'CS' ? 'Computer Lab' : sub.code === 'SCI' && p > 5 ? 'Science Lab' : sub.code === 'PE' ? 'Playground' : sec.room });
+        timetable_slots.push({ id: `${sec.id}-d${day}p${p}`, section_id: sec.id, day, period: p, start_time: pr.start, end_time: pr.end, subject_id: sub.id, teacher_id: t.id, room: sub.code === 'CS' ? 'Computer Lab' : ['PHY', 'CHE', 'BIO'].includes(sub.code) || (sub.code === 'SCI' && p > 5) ? 'Science Lab' : sub.code === 'PE' ? 'Playground' : sub.code === 'MUS' ? 'Music Room' : sec.room });
       }
     }
   });
@@ -251,19 +257,33 @@ export function generateSchoolData(school) {
     CS: ['Write 5 HTML tags with examples', 'Flowchart: largest of three numbers', 'Spreadsheet formulas practice'],
     SAN: ['शब्द रूप — बालक', 'धातु रूप — पठ्', 'श्लोक कंठस्थ करें'],
     PE: ['Fitness log for one week', 'Rules of Kho-Kho', 'Yoga asana chart'],
+    EVS: ['Draw 5 animals and their homes', 'Collect 5 types of leaves', 'My family tree'],
+    ART: ['Make a paper boat', 'Colour the mango tree', 'Thumb-print caterpillar'],
+    MUS: ['Learn the rhyme “Twinkle Twinkle”', 'Sing the school prayer at home', 'Clap the rhythm 1-2-3'],
+    PHY: ['Numericals: Laws of motion (10)', 'Lab file: Vernier callipers', 'Derivation: Work-energy theorem'],
+    CHE: ['Balance 15 chemical equations', 'Lab file: Salt analysis', 'Mole concept worksheet'],
+    BIO: ['Diagram: Structure of a neuron', 'Lab file: Mitosis slide', 'Notes: Plant kingdom'],
+    ACC: ['Journal entries — 20 transactions', 'Prepare a trial balance', 'Bank reconciliation statement'],
+    BST: ['Case study: Principles of management', 'Notes: Forms of business', 'Project: Marketing mix'],
+    ECO: ['Draw demand & supply curves', 'Numericals: Elasticity', 'Project: Indian economy since 1991'],
+    HIS: ['Map: Harappan sites', 'Source analysis: Ashokan edicts', 'Notes: Bhakti movement'],
+    POL: ['Essay: Fundamental rights', 'Notes: Election process', 'Case study: Federalism'],
+    GEO: ['Map: Monsoon winds of India', 'Notes: Plate tectonics', 'Practical: Topo sheet reading'],
   };
+  const preHw = { ENG: ['Trace letters A to E', 'Show and tell: my favourite toy'], HIN: ['अ से अः तक लिखें', 'चित्र देखकर नाम बोलें'], MAT: ['Count and colour 1 to 10', 'Draw big and small circles'] };
   const homework = [];
   sections.forEach((sec) => {
-    for (let k = 0; k < 6; k++) {
-      const sub = subjects[(k * 3 + sec.grade) % 6];
+    const codes = subjectCodesFor(sec).filter((c) => c !== 'PE');
+    for (let k = 0; k < (sec.stage === 'pre' ? 3 : 6); k++) {
+      const sub = subByCode[codes[(k * 3 + Math.abs(sec.grade)) % codes.length]];
       const assigned = addDays(today, -int(0, 6));
       homework.push({
         id: `${sec.id}-hw-${k + 1}`,
         section_id: sec.id,
         subject_id: sub.id,
-        teacher_id: teachersBySubject(sub.id)[0].id,
-        title: pick(hwTitles[sub.code]),
-        details: 'Submit in the class notebook. Neat handwriting and diagrams where needed.',
+        teacher_id: sec.stage === 'pre' ? sec.class_teacher_id : (teachersBySubject(sub.id)[0] || { id: sec.class_teacher_id }).id,
+        title: pick((sec.stage === 'pre' && preHw[sub.code]) || hwTitles[sub.code]),
+        details: sec.stage === 'pre' ? 'Activity at home with a parent — share a photo in the app.' : 'Submit in the class notebook. Neat handwriting and diagrams where needed.',
         assigned_on: iso(assigned),
         due_on: iso(addDays(assigned, int(2, 5))),
       });
@@ -277,8 +297,9 @@ export function generateSchoolData(school) {
     { id: `${school.slug}-ex-3`, name: 'Periodic Test 2', term: 'Term 2', starts_on: iso(addDays(today, 24)), ends_on: iso(addDays(today, 30)), status: 'scheduled' },
   ];
   const marks = [];
-  const core = subjects.slice(0, 5).concat(subjects[5]);
+  const secById = Object.fromEntries(sections.map((x) => [x.id, x]));
   students.forEach((s) => {
+    const core = examCodesFor(secById[s.section_id]).map((c) => subByCode[c]);
     const ability = 0.5 + r() * 0.45;
     exams.slice(0, 2).forEach((ex, ei) => {
       const max = ei === 0 ? 40 : 80;
@@ -290,17 +311,17 @@ export function generateSchoolData(school) {
   });
 
   // Fees — quarterly tuition + transport
-  const tuition = { 6: 14500, 7: 14500, 8: 15800, 9: 17200, 10: 17200 };
   const fee_invoices = [];
   let inv = 1;
   const receiptBase = 50000 + school.seed * 100;
   students.forEach((s) => {
     const sec = sections.find((x) => x.id === s.section_id);
     const q = [
-      { title: 'Tuition Fee — Q1 (Apr–Jun)', due: iso(new Date(today.getFullYear(), 3, 15)), amount: tuition[sec.grade] },
-      { title: 'Tuition Fee — Q2 (Jul–Sep)', due: iso(new Date(today.getFullYear(), 6, 15)), amount: tuition[sec.grade] },
-      { title: 'Tuition Fee — Q3 (Oct–Dec)', due: iso(new Date(today.getFullYear(), 9, 15)), amount: tuition[sec.grade] },
+      { title: 'Tuition Fee — Q1 (Apr–Jun)', due: iso(new Date(today.getFullYear(), 3, 15)), amount: tuitionFor(sec) },
+      { title: 'Tuition Fee — Q2 (Jul–Sep)', due: iso(new Date(today.getFullYear(), 6, 15)), amount: tuitionFor(sec) },
+      { title: 'Tuition Fee — Q3 (Oct–Dec)', due: iso(new Date(today.getFullYear(), 9, 15)), amount: tuitionFor(sec) },
     ];
+    if (sec.stage === 'senior' && sec.section === 'Sci') q.push({ title: 'Science Lab Fee — Annual', due: iso(new Date(today.getFullYear(), 3, 30)), amount: 4500 });
     if (s.route_id) q.push({ title: 'Transport Fee — Term 1', due: iso(new Date(today.getFullYear(), 6, 15)), amount: 9600 });
     if (s.hostel_room_id) q.push({ title: 'Hostel Fee — Term 1', due: iso(new Date(today.getFullYear(), 6, 15)), amount: 42000 });
     q.forEach((f, qi) => {
@@ -332,7 +353,7 @@ export function generateSchoolData(school) {
   const hoursAgo = (h) => new Date(now.getTime() - h * 3600e3).toISOString();
 
   const notices = [
-    { id: `${school.slug}-n1`, title: 'Half Yearly results published', body: 'Report cards for Classes 6–10 are now available in the parent portal. Parent–teacher meeting on Saturday, 10:00 AM – 1:00 PM.', audience: 'Parents, Students', category: 'Academic', priority: 'normal', published_at: hoursAgo(5), author: school.principal_name },
+    { id: `${school.slug}-n1`, title: 'Half Yearly results published', body: 'Report cards for Classes 1–12 are now available in the parent portal. Parent–teacher meeting on Saturday, 10:00 AM – 1:00 PM.', audience: 'Parents, Students', category: 'Academic', priority: 'normal', published_at: hoursAgo(5), author: school.principal_name },
     { id: `${school.slug}-n2`, title: 'Annual Sports Day — house practice schedule', body: 'House-wise practice will be held after 7th period from Monday. Students must carry sports uniform.', audience: 'All', category: 'Sports', priority: 'normal', published_at: hoursAgo(26), author: 'Sports Department' },
     { id: `${school.slug}-n3`, title: 'School closed on Gandhi Jayanti (2 October)', body: 'The school will remain closed on account of Gandhi Jayanti. Transport will not operate.', audience: 'All', category: 'Holiday', priority: 'important', published_at: hoursAgo(50), author: 'Office' },
     { id: `${school.slug}-n4`, title: 'Q3 fee due by 15 October', body: 'Parents are requested to clear the Q3 tuition fee by 15 October to avoid a late fee of ₹50 per day.', audience: 'Parents', category: 'Fees', priority: 'important', published_at: hoursAgo(74), author: 'Accounts Office' },

@@ -1,3 +1,4 @@
+import { subjectCodesFor } from './classes.js';
 // Extra K-12 modules: admissions CRM, library, online tests, lesson plans, PTM, messages,
 // gate passes, health, certificates, payroll, inventory, calendar, co-scholastic grades.
 // Built on top of the base dataset so every record points at real students/teachers.
@@ -122,9 +123,10 @@ export function generateExtra(base) {
   // ── Lesson plans & syllabus tracking ──
   const lesson_plans = [];
   sections.forEach((sec) => {
+    const codes = subjectCodesFor(sec);
     Object.entries(TOPICS).forEach(([code, topics]) => {
       const sub = subBy[code];
-      if (!sub) return;
+      if (!sub || !codes.includes(code) || sec.stage === 'pre') return;
       const done = int(Math.floor(topics.length * 0.35), Math.floor(topics.length * 0.75));
       topics.forEach((topic, i) => {
         lesson_plans.push({
@@ -238,6 +240,22 @@ export function generateExtra(base) {
   const CO = ['Art & craft', 'Music', 'Dance', 'Sports', 'Yoga', 'Discipline', 'Leadership', 'Teamwork'];
   const co_scholastic = Object.fromEntries(students.map((s) => [s.id, CO.map((area) => ({ area, grade: pick(['A', 'A', 'B', 'A', 'B', 'C']) }))]));
 
+  // ── Pre-primary: skill checklist + daily diary ──
+  const SKILLS = ['Language & listening', 'Early literacy', 'Numeracy', 'Fine motor', 'Gross motor', 'Social & emotional', 'Creativity', 'Environmental awareness'];
+  const LEVELS = ['Emerging', 'Developing', 'Proficient', 'Mastered'];
+  const preIds = new Set(sections.filter((x) => x.stage === 'pre').map((x) => x.id));
+  const NOTES = { 'Language & listening': ['Listens to stories with interest', 'Follows two-step instructions'], 'Early literacy': ['Recognises letters A–Z', 'Traces letters neatly'], Numeracy: ['Counts objects to 20', 'Sorts by size and colour'], 'Fine motor': ['Holds crayon correctly', 'Cuts along a line with safety scissors'], 'Gross motor': ['Hops and balances well', 'Enjoys ball games'], 'Social & emotional': ['Shares toys with friends', 'Takes turns patiently'], Creativity: ['Loves clay and colours', 'Makes up little stories'], 'Environmental awareness': ['Names fruits, animals and seasons', 'Waters the class plant daily'] };
+  const skills = Object.fromEntries(students.filter((s) => preIds.has(s.section_id)).map((s) => [s.id, SKILLS.map((area) => ({ area, level: LEVELS[int(1, 3)], note: pick(NOTES[area]) }))]));
+  const diary = {};
+  students.filter((s) => preIds.has(s.section_id)).forEach((s) => {
+    diary[s.id] = Array.from({ length: 5 }, (_, d) => ({
+      date: iso(addDays(today, -d)), mood: pick(['Happy', 'Happy', 'Cheerful', 'Calm', 'A little sleepy']),
+      meal: pick(['Finished full tiffin', 'Ate most of the tiffin', 'Ate half — sent fruit back']), water: pick(['Good', 'Needs reminders']),
+      activity: pick(['Clay modelling', 'Story time: The Thirsty Crow', 'Rhymes & dance', 'Sand play', 'Colour sorting game', 'Nature walk']),
+      toilet: pick(['Independent', 'Independent', 'Needed help once']), photos: int(2, 6), note: pick(['', '', 'Please send a spare set of clothes.', 'Brought a drawing for you today!']),
+    }));
+  });
+
   // ── Achievements & discipline (student 360) ──
   const achievements = Array.from({ length: 18 }, (_, i) => {
     const s = i === 0 ? kidA : students[int(0, students.length - 1)];
@@ -282,5 +300,5 @@ export function generateExtra(base) {
     { id: 'br-4', name: `${school.short_name} — ${school.city === 'Jaipur' ? 'Ajmer' : 'Kanpur'} Branch`, city: school.city === 'Jaipur' ? 'Ajmer' : 'Kanpur', students: 1040, teachers: 64, attendance: 93.2, fee_collection: 81, head: 'Mr. Deepak Verma', established: 2019 },
   ];
 
-  return { comm_templates, automations, comm_logs, comm_stats, branches, admissions, books, book_loans, question_bank, online_tests, test_attempts, lesson_plans, ptm_slots, threads, gate_passes, health_visits, health_profiles, certificates, payroll, staff_support, inventory, calendar, co_scholastic, achievements };
+  return { skills, diary, comm_templates, automations, comm_logs, comm_stats, branches, admissions, books, book_loans, question_bank, online_tests, test_attempts, lesson_plans, ptm_slots, threads, gate_passes, health_visits, health_profiles, certificates, payroll, staff_support, inventory, calendar, co_scholastic, achievements };
 }
