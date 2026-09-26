@@ -1,3 +1,4 @@
+import { FeeReceipt } from './Documents.jsx';
 import { useState } from 'react';
 import { useSchool } from '../../lib/store.jsx';
 import Icon from '../../components/Icon.jsx';
@@ -18,6 +19,9 @@ function FeesOffice() {
   const [tab, setTab] = useState('overdue');
   const [q, setQ] = useState('');
   const [collect, setCollect] = useState(null);
+  const [rid, setRid] = useState(null);
+  const setReceipt = (f) => setRid(f.id);
+  const rcpt = rid && data.fee_invoices.find((x) => x.id === rid && x.status === 'paid');
   const [method, setMethod] = useState('Cash');
   const s = feeSummary(data.fee_invoices);
   const rows = data.fee_invoices.filter((f) => (tab === 'all' || f.status === tab) && (!q || `${idx.students[f.student_id]?.full_name} ${f.invoice_no}`.toLowerCase().includes(q.toLowerCase())));
@@ -27,7 +31,7 @@ function FeesOffice() {
   });
   return (
     <div>
-      <PageHead title="Fees" sub="Collection, dues and receipts" actions={<><button className="btn"><Icon name="download" size={16} /> Export</button><button className="btn btn-primary"><Icon name="send" size={16} /> Send reminders ({s.overdueCount})</button></>} />
+      <PageHead title="Fees" sub="Collection, dues and receipts" actions={<><button className="btn"><Icon name="download" size={16} /> Export</button><button className="btn btn-primary" onClick={() => { actions.push(['parent'], 'Fee reminder', `Your fee is overdue. Pay online in the app to avoid late fee.`, 'fees', ['push', 'whatsapp', 'sms']); notify(`Reminders sent to ${s.overdueCount} parents on WhatsApp + SMS`); }}><Icon name="send" size={16} /> Send reminders ({s.overdueCount})</button></>} />
       <div className="grid g-4" style={{ marginBottom: 16 }}>
         <Stat label="Collected this session" value={inr(s.collected, true)} foot={`${s.paidCount} receipts`} icon="rupee" tone="green" />
         <Stat label="Overdue" value={inr(s.overdue, true)} foot={`${s.overdueCount} invoices`} icon="alert" tone="red" />
@@ -59,13 +63,13 @@ function FeesOffice() {
           <thead><tr><th>Invoice</th><th>Student</th><th>Class</th><th>Fee head</th><th>Due</th><th className="num">Amount</th><th>Status</th><th /></tr></thead>
           <tbody>{rows.slice(0, 60).map((f) => { const st = idx.students[f.student_id]; return (
             <tr key={f.id}><td className="small tnum">{f.invoice_no}</td><td className="strong">{st?.full_name}</td><td>{idx.sections[st?.section_id]?.name}</td><td className="small">{f.title}</td><td className="small">{fmtDate(f.due_on)}</td><td className="num strong">{inr(f.amount)}</td><td><StatusBadge status={f.status} /></td>
-              <td>{f.status === 'paid' ? <span className="xs muted">{f.receipt_no} · {f.method}</span> : <button className="btn btn-sm btn-primary" onClick={() => setCollect(f)}>Collect</button>}</td></tr>
+              <td>{f.status === 'paid' ? <button className="btn btn-sm" onClick={() => setReceipt(f)}><Icon name="receipt" size={14} /> {f.receipt_no}</button> : <button className="btn btn-sm btn-primary" onClick={() => setCollect(f)}>Collect</button>}</td></tr>
           ); })}</tbody>
         </table></div>
         {!rows.length && <Empty>No invoices.</Empty>}
       </Card>
       {collect && (
-        <Modal title="Collect fee" onClose={() => setCollect(null)} footer={<><button className="btn" onClick={() => setCollect(null)}>Cancel</button><button className="btn btn-primary" onClick={() => { actions.payInvoice(collect.id, method); notify(`Receipt generated · ${inr(collect.amount)}`); setCollect(null); }}>Collect {inr(collect.amount)}</button></>}>
+        <Modal title="Collect fee" onClose={() => setCollect(null)} footer={<><button className="btn" onClick={() => setCollect(null)}>Cancel</button><button className="btn btn-primary" onClick={() => { actions.payInvoice(collect.id, method); notify(`Receipt generated · ${inr(collect.amount)}`); setRid(collect.id); setCollect(null); }}>Collect {inr(collect.amount)}</button></>}>
           <div className="stack">
             <div className="card card-b" style={{ background: 'var(--surface-2)', boxShadow: 'none' }}>
               <div className="strong">{idx.students[collect.student_id]?.full_name}</div>
@@ -76,6 +80,7 @@ function FeesOffice() {
           </div>
         </Modal>
       )}
+      {rcpt && <FeeReceipt f={rcpt} onClose={() => setRid(null)} />}
     </div>
   );
 }
@@ -121,7 +126,7 @@ function FeesParent() {
           </div>
         </Modal>
       )}
-      {receipt && <Receipt f={receipt} student={s} onClose={() => setReceipt(null)} />}
+      {receipt && <FeeReceipt f={receipt} onClose={() => setReceipt(null)} />}
     </div>
   );
 }

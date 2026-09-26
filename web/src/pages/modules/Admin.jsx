@@ -3,7 +3,7 @@ import { useSchool } from '../../lib/store.jsx';
 import Icon from '../../components/Icon.jsx';
 import { PageHead, Card, Stat, StatusBadge, Badge, Tabs, Modal, IconTile, inr, num } from '../../components/ui.jsx';
 import { Crest, CampusArt } from '../../components/Brand.jsx';
-import { ROLES, MODULES, PERMISSION_MATRIX, ROLE_PERMISSIONS } from '../../config/roles.js';
+import { ROLES, MODULES, PERMISSION_MATRIX, ROLE_PERMISSIONS, LOCKED_EDIT } from '../../config/roles.js';
 import { defaultAccess } from '../../lib/store.jsx';
 import { PLANS, PLATFORM_TENANTS } from '../../data/api.js';
 import { DEMO_SCHOOLS } from '../../data/schools.js';
@@ -91,8 +91,9 @@ const GRANT_RULES = [
 ];
 
 export function Permissions() {
-  const { data, access, setAccess, notify } = useSchool();
+  const { data, access, setAccess, notify, actions } = useSchool();
   const [tab, setTab] = useState('users');
+  const [roleView, setRoleView] = useState('teacher');
   const [invite, setInvite] = useState(false);
   const [f, setF] = useState({ name: '', phone: '', role: 'teacher', scope: '8A' });
   const roles = ROLES.filter((r) => !r.platform);
@@ -107,16 +108,22 @@ export function Permissions() {
     { name: 'Neha Kulkarni', role: 'teacher', scope: 'Class 7B', phone: '+91 99280 12121', status: 'invited', last: '—' },
   ]);
   const allMods = Object.keys(MODULES).filter((k) => !['schools', 'subscriptions', 'plans', 'onboarding', 'dashboard', 'trip'].includes(k));
-  const toggle = (role, mod) => {
-    const cur = new Set(access[role] || []);
-    if (cur.has(mod)) cur.delete(mod); else cur.add(mod);
-    setAccess({ ...access, [role]: [...cur] });
+  const LV = [null, 'view', 'edit'];
+  const LV_LABEL = { null: 'None', view: 'View', edit: 'Edit' };
+  const cycle = (role, mod) => {
+    const cur = access[role]?.[mod] || null;
+    const next = LV[(LV.indexOf(cur) + 1) % 3];
+    const map = { ...(access[role] || {}) };
+    if (next) map[mod] = next; else delete map[mod];
+    setAccess({ ...access, [role]: map });
+    actions.logAudit({ module: 'permissions', action: `Access changed · ${roleLabel(role)} · ${MODULES[mod].label}: ${LV_LABEL[cur]} → ${LV_LABEL[next]}`, kind: 'security' });
+    notify(`${roleLabel(role)} · ${MODULES[mod].label}: ${LV_LABEL[next]}`);
   };
   const roleLabel = (k) => ROLES.find((r) => r.key === k)?.label || k;
   return (
     <div>
       <PageHead title="Users, roles & access" sub="Who can log in, what each role sees, and who is allowed to grant access" actions={<button className="btn btn-primary" onClick={() => setInvite(true)}><Icon name="user-plus" size={16} /> Invite user</button>} />
-      <Tabs tabs={[['users', 'Users'], ['modules', 'Module access by role'], ['matrix', 'Permission matrix'], ['rules', 'Who grants access']]} value={tab} onChange={setTab} />
+      <Tabs tabs={[['users', 'Users'], ['modules', 'View / edit access'], ['role', 'By role'], ['matrix', 'Permission matrix'], ['rules', 'Who grants access']]} value={tab} onChange={setTab} />
       <div style={{ marginTop: 16 }}>
         {tab === 'users' && (
           <Card pad={false}><div className="table-wrap"><table className="table">
@@ -130,17 +137,37 @@ export function Permissions() {
           </table></div></Card>
         )}
         {tab === 'modules' && (
-          <Card pad={false} footer={<div className="row between wrap"><span className="xs muted">Changes apply instantly: the module disappears from menus and its pages are blocked for that role.</span><button className="btn btn-sm" onClick={() => { setAccess(defaultAccess()); notify('Reset to Miz defaults'); }}>Reset to defaults</button></div>}>
+          <>
+          <div className="row wrap small" style={{ gap: 14, marginBottom: 12 }}>
+            <span className="row" style={{ gap: 6 }}><span className="acc-cell">None</span> hidden from menu, page blocked</span>
+            <span className="row" style={{ gap: 6 }}><span className="acc-cell view">View</span> can open and read, every change button is blocked</span>
+            <span className="row" style={{ gap: 6 }}><span className="acc-cell edit">Edit</span> can add, change and approve</span>
+          </div>
+          <Card pad={false} footer={<div className="row between wrap"><span className="xs muted">Click a cell to switch None → View → Edit. Applies instantly and is written to the Audit Log.</span><button className="btn btn-sm" onClick={() => { setAccess(defaultAccess()); actions.logAudit({ module: 'permissions', action: 'Access reset to Miz defaults', kind: 'security' }); notify('Reset to Miz defaults'); }}>Reset to defaults</button></div>}>
             <div className="table-wrap"><table className="table" style={{ minWidth: 1100 }}>
-              <thead><tr><th>Module</th>{roles.map((r) => <th key={r.key} style={{ textAlign: 'center' }}>{r.label.replace('School ', '').replace('Gate ', '')}</th>)}</tr></thead>
+              <thead><tr><th>Module</th>{roles.map((r) => <th key={r.key} style={{ textAlign: 'center' }}>{r.label.replace('School ', '').replace('Gate ', '')}<div className="xs muted" style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>{Object.values(access[r.key] || {}).filter((x) => x === 'edit').length}E · {Object.values(access[r.key] || {}).filter((x) => x === 'view').length}V</div></th>)}</tr></thead>
               <tbody>{allMods.map((m) => (
-                <tr key={m}><td className="small strong"><span className="row" style={{ gap: 8 }}><Icon name={MODULES[m].icon} size={15} />{MODULES[m].label}</span></td>
-                  {roles.map((r) => { const locked = r.key === 'school_admin' && ['permissions', 'settings'].includes(m); const on = (access[r.key] || []).includes(m); return (
-                    <td key={r.key} style={{ textAlign: 'center' }}><input type="checkbox" checked={on} disabled={locked} onChange={() => toggle(r.key, m)} aria-label={`${MODULES[m].label} for ${r.label}`} /></td>
+                <tr key={m}><td className="small strong nowrap"><span className="row" style={{ gap: 8 }}><Icon name={MODULES[m].icon} size={15} />{MODULES[m].label}</span></td>
+                  {roles.map((r) => { const locked = (LOCKED_EDIT[r.key] || []).includes(m); const lv = access[r.key]?.[m] || null; return (
+                    <td key={r.key} style={{ textAlign: 'center', padding: '6px 4px' }}><button className={`acc-cell ${lv || ''}`} disabled={locked} title={locked ? 'Always on for School Admin' : `${MODULES[m].label} for ${r.label}`} onClick={() => cycle(r.key, m)}>{LV_LABEL[lv]}</button></td>
                   ); })}</tr>
               ))}</tbody>
             </table></div>
           </Card>
+          </>
+        )}
+        {tab === 'role' && (
+          <div className="stack">
+            <select className="select" style={{ width: 'auto', alignSelf: 'flex-start' }} value={roleView} onChange={(e) => setRoleView(e.target.value)}>{roles.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select>
+            <div className="grid g-2">
+              {['edit', 'view'].map((lv) => (
+                <Card key={lv} title={lv === 'edit' ? `Can change (${Object.values(access[roleView] || {}).filter((x) => x === lv).length})` : `Can only see (${Object.values(access[roleView] || {}).filter((x) => x === lv).length})`} icon={lv === 'edit' ? 'edit' : 'eye'} tone={lv === 'edit' ? 'green' : 'blue'}>
+                  <div className="row wrap" style={{ gap: 6 }}>{Object.entries(access[roleView] || {}).filter(([, x]) => x === lv).map(([m]) => <Badge key={m} tone={lv === 'edit' ? 'green' : 'blue'}>{MODULES[m]?.label}</Badge>)}</div>
+                </Card>
+              ))}
+            </div>
+            <div className="xs muted">Scope still applies on top of access: a teacher with Edit on Homework can post only for the classes and subjects allotted to them; a parent sees only their own children.</div>
+          </div>
         )}
         {tab === 'matrix' && (
           <Card pad={false}><div className="table-wrap"><table className="table" style={{ minWidth: 980 }}>
@@ -173,7 +200,7 @@ export function Permissions() {
               <div className="field"><label>Role</label><select className="select" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>{roles.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select></div>
               <div className="field"><label>Scope</label><select className="select" value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value })}>{['Whole school', ...data.sections.map((s) => s.name), ...data.routes.map((r) => `Route ${r.code}`)].map((x) => <option key={x}>{x}</option>)}</select></div>
             </div>
-            <div className="card card-b" style={{ background: 'var(--surface-2)', boxShadow: 'none' }}><div className="xs muted strong" style={{ marginBottom: 6 }}>This user will see</div><div className="row wrap" style={{ gap: 4 }}>{(access[f.role] || []).map((m) => <Badge key={m}>{MODULES[m]?.label}</Badge>)}</div></div>
+            <div className="card card-b" style={{ background: 'var(--surface-2)', boxShadow: 'none' }}><div className="xs muted strong" style={{ marginBottom: 6 }}>This user will see</div><div className="row wrap" style={{ gap: 4 }}>{Object.entries(access[f.role] || {}).map(([m, lv]) => <Badge key={m} tone={lv === 'edit' ? 'green' : 'blue'}>{MODULES[m]?.label}{lv === 'view' ? ' (view)' : ''}</Badge>)}</div></div>
           </div>
         </Modal>
       )}
