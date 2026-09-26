@@ -30,7 +30,7 @@ npm run dev                 # http://localhost:4000/api/v1/health
 ```
 
 Without an anon key the web app runs on built-in demo data (same shapes as the database).
-With the key it reads live from Supabase — the profile menu shows "Data source".
+With the key it reads live from Supabase.
 
 ## Supabase
 
