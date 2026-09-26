@@ -37,7 +37,7 @@ function AdminDash() {
     <div className="stack">
       <Welcome name={persona.name} sub={`${data.school.name} · School overview`} chips={[['users', `${data.students.length} students`], ['id', `${data.teachers.length} teachers`], ['layers', `${data.sections.length} sections`], ['check', `${Math.round(k.today.pct)}% present today`]]} actions={<><button className="btn" onClick={() => go('reports')}><Icon name="chart" size={16} /> Reports</button><button className="btn btn-primary" onClick={() => go('notices')}><Icon name="megaphone" size={16} /> New notice</button></>} />
       <div className="grid g-4">
-        <Stat label="Students" value={num(data.students.length)} foot={`${data.sections.length} sections · Classes 6–10`} icon="users" />
+        <Stat label="Students" value={num(data.students.length)} foot={`${data.sections.length} sections · LKG to Class 12`} icon="users" />
         <Stat label="Teachers" value={num(data.teachers.length)} foot={`${data.teachers.filter((t) => t.designation === 'PGT').length} PGT · ${data.teachers.filter((t) => t.designation === 'TGT').length} TGT`} icon="id" />
         <Stat label="Attendance today" value={pct(k.today.pct)} foot={`${k.today.absent} absent · ${k.today.late} late`} icon="check" tone="green" />
         <Stat label="Fees pending" value={inr(k.fees.pending, true)} foot={`${inr(k.fees.overdue, true)} overdue · ${k.fees.overdueCount} invoices`} icon="wallet" tone="amber" />
@@ -94,7 +94,7 @@ function PrincipalDash() {
   const go = useGo();
   const k = useSchoolKpis();
   const exam = data.exams.find((e) => e.name.startsWith('Half'));
-  const results = useMemo(() => data.sections.map((s) => {
+  const results = useMemo(() => data.sections.filter((s) => s.stage !== 'pre').map((s) => {
     const list = sectionResults(data, idx, s.id, exam.id);
     const avg = list.reduce((a, r) => a + r.pct, 0) / (list.length || 1);
     const pass = list.filter((r) => r.pct >= 33).length / (list.length || 1) * 100;
@@ -193,6 +193,8 @@ function ChildHome({ student, parent }) {
   const due = fees.filter((f) => f.status === 'due' || f.status === 'overdue');
   const exam = data.exams.find((e) => e.name.startsWith('Half'));
   const rc = reportCard(data, idx, student.id, exam.id);
+  const isPre = idx.sections[student.section_id].stage === 'pre';
+  const todayDiary = data.diary?.[student.id]?.[0];
   const next = data.exams.find((e) => e.status === 'scheduled');
   const slots = daySchedule(data, { sectionId: sec.id, day: todayDow() });
   const hw = pendingHomework(data, sec.id).filter((h) => !h.overdue).slice(0, 4);
@@ -215,14 +217,22 @@ function ChildHome({ student, parent }) {
       </div>
       <div className="grid g-4">
         <Stat label="Attendance (24 days)" value={pct(att.pct, 0)} foot={`${att.absent} absent · ${att.late} late`} icon="check" tone={att.pct < 85 ? 'amber' : 'green'} />
-        <Stat label={exam.name} value={`${rc.pct.toFixed(1)}%`} foot={`Grade ${rc.grade}`} icon="award" />
+        {isPre ? <Stat label="Today’s mood" value={todayDiary?.mood || '—'} foot={todayDiary?.activity} icon="sun" tone="amber" /> : <Stat label={exam.name} value={`${rc.pct.toFixed(1)}%`} foot={`Grade ${rc.grade}`} icon="award" />}
         <Stat label="Fees due" value={due.length ? inr(due.reduce((a, f) => a + Number(f.amount), 0)) : 'Nil'} foot={due.length ? `${due.filter((f) => f.status === 'overdue').length} overdue` : 'All clear'} icon="wallet" tone={due.some((f) => f.status === 'overdue') ? 'red' : undefined} />
-        <Stat label="Next exam" value={fmtDate(next?.starts_on)} foot={next?.name} icon="calendar" />
+        {isPre ? <Stat label="Skills mastered" value={`${(data.skills?.[student.id] || []).filter((x) => x.level === 'Mastered' || x.level === 'Proficient').length}/8`} foot="Proficient or mastered" icon="palette" tone="rose" /> : <Stat label="Next exam" value={fmtDate(next?.starts_on)} foot={next?.name} icon="calendar" />}
       </div>
       <div className="grid g-main">
         <Card icon="calendar" tone="teal" title={`Today’s timetable — ${sec.name}`} pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('timetable')}>Week</button>}><PeriodList slots={slots} showTeacher /></Card>
         <div className="stack">
-          <Card icon="notebook" tone="indigo" title="Homework due" pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('homework')}>All</button>}>
+          {isPre && todayDiary && (
+            <Card icon="sun" tone="amber" title="Today at school — daily diary">
+              <div className="grid g-2" style={{ gap: 10 }}>
+                {[['food', 'Meal', todayDiary.meal], ['sun', 'Mood', todayDiary.mood], ['palette', 'Activity', todayDiary.activity], ['check', 'Toilet', todayDiary.toilet], ['health', 'Water', todayDiary.water], ['eye', 'Photos', `${todayDiary.photos} new photos`]].map(([ic, k, v]) => <div key={k} className="row" style={{ gap: 8 }}><IconTile icon={ic} size={30} /><div><div className="xs muted">{k}</div><div className="small strong">{v}</div></div></div>)}
+              </div>
+              {todayDiary.note && <p className="small" style={{ marginTop: 10, background: 'var(--warn-bg)', padding: 8, borderRadius: 8 }}>Teacher’s note: {todayDiary.note}</p>}
+            </Card>
+          )}
+          <Card icon="notebook" tone="indigo" title={isPre ? 'Activity at home' : 'Homework due'} pad={false} action={<button className="btn btn-ghost btn-sm" onClick={() => go('homework')}>All</button>}>
             <div className="list">
               {hw.length ? hw.map((h) => (
                 <div key={h.id}><div className="row between top"><span className="strong small">{h.title}</span><Badge tone="amber">Due {fmtDate(h.due_on)}</Badge></div><div className="xs muted">{idx.subjects[h.subject_id]?.name}</div></div>
