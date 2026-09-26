@@ -50,8 +50,26 @@ function withMeta(data, source) {
   return data;
 }
 
-export async function loadSchoolData(slug) {
+// Demo speed: data is built in the browser instantly (no network wait).
+// Set VITE_LIVE_DATA=true to read every table from Supabase instead.
+const LIVE = import.meta.env.VITE_LIVE_DATA === 'true';
+const cache = {};
+
+export function loadSchoolData(slug) {
+  if (!cache[slug]) cache[slug] = fetchSchoolData(slug).catch((e) => { delete cache[slug]; throw e; });
+  return cache[slug];
+}
+
+/** Synchronous local build — lets the first screen render with zero loading time. */
+export function localSchoolData(slug) {
   const local = findSchool(slug) || DEMO_SCHOOLS[0];
+  if (!cache[`local:${slug}`]) cache[`local:${slug}`] = withMeta(generateSchoolData(local), 'local');
+  return cache[`local:${slug}`];
+}
+
+async function fetchSchoolData(slug) {
+  const local = findSchool(slug) || DEMO_SCHOOLS[0];
+  if (!LIVE) return localSchoolData(slug);
   if (supabaseEnabled) {
     try {
       const [school] = await selectAll('schools', { slug: `eq.${slug}` });
