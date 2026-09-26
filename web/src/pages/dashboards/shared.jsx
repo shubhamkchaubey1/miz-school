@@ -131,7 +131,8 @@ export function PeriodList({ slots, showSection, showTeacher }) {
             <IconTile icon={st.icon} tone={st.tone} size={34} />
             <div className="grow">
               <div className="strong small">{sub?.name}{showSection && ` — Class ${idx.sections[t.section_id]?.name}`}</div>
-              <div className="xs muted">Period {t.period} · {t.start_time}–{t.end_time} · {t.room}{showTeacher && ` · ${idx.teachers[t.teacher_id]?.full_name}`}</div>
+              <div className="xs muted">Period {t.period} · {t.start_time}–{t.end_time} · {t.room}{showTeacher && ` · ${t.sub && !t.teacher_id ? (t.sub.status === 'open' ? 'teacher to be assigned' : 'self-study') : idx.teachers[t.teacher_id]?.full_name}`}</div>
+              {t.sub && <div className="sub-tag">{showTeacher ? `Substitute for ${idx.teachers[t.original_teacher_id]?.full_name}` : `Cover duty · for ${idx.teachers[t.original_teacher_id]?.full_name}`}</div>}
             </div>
             {on && <span className="badge blue">Now</span>}
           </div>

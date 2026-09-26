@@ -47,7 +47,7 @@ function AdminDash() {
           <Bars min={80} data={k.trend} format={(v) => `${Math.round(v)}`} />
           <div className="xs muted" style={{ marginTop: 8 }}>Percentage of students present or late.</div>
         </Card>
-        <TodaySchedule />
+        <div className="stack"><CoverCard /><TodaySchedule /></div>
       </div>
       <div className="grid g-main">
         <Card icon="users" tone="green" title="Class-wise attendance today" pad={false} action={<span className="xs muted">{fmtDate(idx.today, { weekday: 'short', day: 'numeric', month: 'short' })}</span>}>
@@ -121,6 +121,7 @@ function PrincipalDash() {
           </div>
         </Card>
         <div className="stack">
+          <CoverCard />
           <TodaySchedule />
           <Card icon="chart" tone="blue" title="Attendance trend"><Bars min={80} data={k.trend.slice(-6)} height={110} format={(v) => Math.round(v)} /></Card>
         </div>
@@ -142,7 +143,7 @@ function TeacherDash() {
     <div className="stack">
       <Welcome name={persona.name} sub={`${idx.subjects[persona.teacher.subject_id]?.name} · Class teacher of ${sec.name}`} chips={[['calendar', `${classes.length} periods today`], ['users', `${myClass.length} students in ${sec.name}`]]} actions={<button className="btn btn-primary" onClick={() => go('attendance')}><Icon name="check" size={16} /> Mark attendance — {sec.name}</button>} />
       <div className="grid g-4">
-        <Stat label="Periods today" value={classes.length} foot={classes[0] ? `First at ${classes[0].start_time}` : 'Free day'} icon="calendar" />
+        <Stat label="Periods today" value={classes.length} foot={classes.some((c) => c.sub) ? `Incl. ${classes.filter((c) => c.sub).length} cover duty` : classes[0] ? `First at ${classes[0].start_time}` : 'Free day'} icon="calendar" />
         <Stat label={`Class ${sec.name} strength`} value={myClass.length} foot={`${myClass.filter((s) => s.gender === 'F').length} girls · ${myClass.filter((s) => s.gender === 'M').length} boys`} icon="users" />
         <Stat label={`${sec.name} attendance today`} value={pct(att.pct, 0)} foot={`${att.absent} absent · ${att.late} late`} icon="check" tone="green" />
         <Stat label="Homework posted" value={data.homework.filter((h) => h.teacher_id === persona.teacher.id).length} foot="This week" icon="book" />
@@ -472,4 +473,25 @@ function AccountantHome() {
 function LibrarianHome() {
   const { persona } = useSchool(); const go = useGo();
   return (<div><Welcome name={persona.name} sub="School library" actions={<button className="btn btn-primary" onClick={() => go('library')}><Icon name="scan" size={16} /> Issue / return</button>} /><LibrarianDash /></div>);
+}
+
+/** Today's teacher absences and cover status — principal & admin. */
+function CoverCard() {
+  const { data, idx } = useSchool();
+  const go = useGo();
+  const date = todayISO();
+  const subs = (data.substitutions || []).filter((s) => s.date === date);
+  const open = subs.filter((s) => s.status === 'open');
+  const away = [...new Set(subs.map((s) => s.absent_teacher_id))];
+  return (
+    <Card icon="refresh" tone="violet" title="Teacher cover today" action={<button className="btn btn-ghost btn-sm" onClick={() => go('substitution')}>Arrange</button>}>
+      {subs.length ? (
+        <div className="stack-sm small">
+          <div className="row between"><span>{away.length} teacher{away.length === 1 ? '' : 's'} away</span><strong>{subs.length - open.length}/{subs.length} periods covered</strong></div>
+          <div className="xs muted">{away.map((id) => idx.teachers[id]?.full_name).join(' · ')}</div>
+          {open.length > 0 && <div className="row" style={{ gap: 6, color: 'var(--danger)' }}><Icon name="alert" size={15} />{open.length} period{open.length > 1 ? 's' : ''} still without a teacher</div>}
+        </div>
+      ) : <div className="small muted">All teachers are in today.</div>}
+    </Card>
+  );
 }
