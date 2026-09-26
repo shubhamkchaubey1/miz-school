@@ -11,7 +11,7 @@ const PROBLEMS = [
   ['bus', 'teal', 'Child safety worries — bus and early pickup', 'Parents wait at stops without knowing where the bus is; anyone can claim to pick up a child.', 'Live bus map with “bus is near” alerts, driver boarding checklist, and OTP-verified gate passes.'],
   ['trend', 'blue', 'Management decides on gut feeling', 'Owners see numbers only at year end — low attendance or weak students are noticed too late.', 'Smart Insights flags at-risk students (attendance + marks + dues) every week, with suggested actions.'],
   ['user-plus', 'rose', 'Admission enquiries leak away', 'Walk-ins and website leads sit in notebooks; nobody follows up on time.', 'Admissions CRM pipeline, online form with fee payment, and automatic follow-ups.'],
-  ['school', 'navy', 'Software looks generic, costs a fortune, needs training', 'Parents see a vendor’s brand, schools pay heavy licence fees, and staff find it hard to use.', 'Every school gets its own branded portal & app, a simple pay-per-active-user price and a clean interface anyone can use.'],
+  ['school', 'navy', 'Software looks generic, costs a fortune, needs training', 'Parents see a vendor’s brand, schools pay heavy licence fees, and staff find it hard to use.', 'Every school gets its own branded portal & app and a clean interface anyone can use.'],
 ];
 
 const GAPS = [
@@ -23,12 +23,11 @@ const GAPS = [
   ['Admissions CRM with online fee payment', 'Separate product', 'Included'],
   ['Parent PTM slot booking & private chat', 'Phone calls', 'Included'],
   ['Multi-branch group dashboard', 'Enterprise-only', 'All plans can add branches'],
-  ['Pricing', 'Big licence + setup fee', '₹ per active user / month'],
   ['Go-live time', 'Months', 'Days — import from Excel & website'],
 ];
 
 const SIZES = [
-  ['home', 'blue', 'Small school', '50 – 500 students', ['Setup in a day from Excel', 'Parent app + WhatsApp from day one', 'Attendance, homework, fees, results', 'Pay only for active users']],
+  ['home', 'blue', 'Small school', '50 – 500 students', ['Setup in a day from Excel', 'Parent app + WhatsApp from day one', 'Attendance, homework, fees, results', 'Switch on more modules any time']],
   ['school', 'violet', 'Mid-size school', '500 – 5,000 students', ['Transport, hostel, library, canteen', 'Admissions CRM and online tests', 'Payroll, inventory, certificates', 'Role-based access for every department']],
   ['building', 'navy', 'School group / chain', '5,000 – 50,000+ students', ['Unlimited branches, one group dashboard', 'Branch-level access and reports', 'Custom domain & white-label mobile app', 'Priority support and data migration']],
 ];
@@ -56,7 +55,7 @@ export default function Features() {
           </p>
           <div className="row wrap" style={{ marginTop: 20 }}>
             <a className="btn btn-gold btn-lg" href="#/demo">Try the live demo <Icon name="arrow" size={17} /></a>
-            <a className="btn btn-glass btn-lg" href="#/pricing">See pricing</a>
+            <a className="btn btn-glass btn-lg" href="#/pricing">See plans</a>
           </div>
         </div>
       </section>

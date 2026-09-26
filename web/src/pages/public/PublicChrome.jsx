@@ -8,7 +8,7 @@ export function PublicNav() {
         <a href="#/features">Why Miz School</a>
         <a href="#/features">Features</a>
         <a href="#/demo">Live demo</a>
-        <a href="#/pricing">Pricing</a>
+        <a href="#/pricing">Plans</a>
       </nav>
       <div className="row" style={{ marginLeft: 'auto' }}>
         <a className="btn btn-ghost" href="#/demo">Sign in</a>
@@ -27,7 +27,7 @@ export function Footer() {
           <p style={{ marginTop: 12 }}>One platform for attendance, academics, fees, transport and parent communication — branded for every school.</p>
         </div>
         <div className="row" style={{ gap: 48, alignItems: 'flex-start' }}>
-          <div className="stack-sm"><strong style={{ color: '#fff' }}>Product</strong><a href="#/demo">Live demo</a><a href="#/pricing">Pricing</a></div>
+          <div className="stack-sm"><strong style={{ color: '#fff' }}>Product</strong><a href="#/demo">Live demo</a><a href="#/pricing">Plans</a></div>
           <div className="stack-sm"><strong style={{ color: '#fff' }}>Contact</strong><span>hello@mizschool.app</span><span>New Delhi, India</span></div>
         </div>
       </div>

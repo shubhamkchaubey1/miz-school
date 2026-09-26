@@ -24,7 +24,7 @@ const FEATURES = [
 ];
 
 const FAQ = [
-  ['Does it work for a small school?', 'Yes. A school with 50 students can start with attendance, homework, fees and the parent app, and switch on more modules later. You pay only for active users.'],
+  ['Does it work for a small school?', 'Yes. A school with 50 students can start with attendance, homework, fees and the parent app, and switch on more modules later. Modules can be added any time.'],
   ['Which boards and classes are supported?', 'LKG to Class 12 for CBSE, ICSE and State boards — skill-based reports for pre-primary, grades for primary, marks for middle and secondary, and streams with practicals for 11–12.'],
   ['Will parents need to install an app?', 'Parents get an Android/iPhone app, and every important update also goes on WhatsApp and SMS, so no one is left out.'],
   ['Can we use our own school name and logo?', 'Yes. Every school gets its own crest, colours, portal address and branded app screens. Parents never see a vendor brand.'],
@@ -256,10 +256,10 @@ export default function Landing() {
         <div className="pw">
           <div className="card row between wrap cta-band" style={{ gap: 20 }}>
             <div>
-              <div className="serif" style={{ color: '#fff', fontSize: 24, fontWeight: 700 }}>₹100 per active user / month + GST</div>
-              <div style={{ color: '#b9c7db' }}>Students, parents and staff — billed on active accounts only. No setup fee for the pilot.</div>
+              <div className="serif" style={{ color: '#fff', fontSize: 24, fontWeight: 700 }}>See Miz School running with your own school’s name</div>
+              <div style={{ color: '#b9c7db' }}>We import your data, set up your branding and train your staff — live in days.</div>
             </div>
-            <div className="row wrap"><a className="btn" href="#/pricing">Pricing details</a><a className="btn btn-primary" href="#/demo" style={{ background: 'var(--accent)', borderColor: 'var(--accent)', color: '#1b1300' }}>Book a demo</a></div>
+            <div className="row wrap"><a className="btn" href="#/pricing">Compare plans</a><a className="btn btn-primary" href="#/demo" style={{ background: 'var(--accent)', borderColor: 'var(--accent)', color: '#1b1300' }}>Book a demo</a></div>
           </div>
         </div>
       </section>
