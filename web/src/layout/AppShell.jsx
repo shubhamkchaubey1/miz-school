@@ -16,7 +16,8 @@ function useOutside(ref, fn) {
 }
 
 export default function AppShell({ module, children }) {
-  const { slug, role, data, persona, toast } = useSchool();
+  const { slug, role, data, persona, toast, access } = useSchool();
+  const can = (k) => k === 'dashboard' || (access[role] || []).includes(k);
   const [open, setOpen] = useState(false);
   const school = data.school;
   const r = persona.role;
@@ -40,10 +41,10 @@ export default function AppShell({ module, children }) {
             )}
           </div>
           <nav className="sb-nav">
-            {r.nav.map(([group, items]) => (
+            {r.nav.map(([group, items]) => items.filter(can).length > 0 && (
               <div className="sb-group" key={group}>
                 <div className="upper">{group}</div>
-                {items.map((k) => (
+                {items.filter(can).map((k) => (
                   <button key={k} className={`sb-link ${module === k ? 'active' : ''}`} onClick={() => go(k)} aria-current={module === k ? 'page' : undefined}>
                     <span className="sb-ico" style={{ color: toneOf(MODULES[k].icon)[1], background: toneOf(MODULES[k].icon)[0] }}><Icon name={MODULES[k].icon} size={15} /></span>
                     <span>{k === 'dashboard' && r.key === 'parent' ? 'Home' : MODULES[k].label}</span>
@@ -76,7 +77,7 @@ export default function AppShell({ module, children }) {
       </div>
 
       <nav className="bottom-nav" aria-label="Quick navigation">
-        {r.bottom.map((k) => (
+        {r.bottom.filter(can).map((k) => (
           <button key={k} className={module === k ? 'active' : ''} onClick={() => go(k)}>
             <Icon name={MODULES[k].icon} size={20} />
             <span>{k === 'dashboard' ? 'Home' : MODULES[k].label.split(' ')[0].replace('&', '')}</span>
