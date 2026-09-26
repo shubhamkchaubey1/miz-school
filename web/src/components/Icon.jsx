@@ -9,9 +9,11 @@ import {
   LuDoorOpen, LuInbox, LuCalculator, LuFlaskConical, LuEarth, LuMonitor, LuLanguages, LuDumbbell, LuTrophy, LuSun,
   LuUtensils, LuNotebookPen, LuBellRing, LuCalendarCheck, LuClipboardCheck, LuClipboardList, LuUserPlus, LuMedal,
   LuLibrary, LuHandCoins, LuMessagesSquare, LuMapPinned, LuBadgeCheck, LuCircleAlert, LuTimer, LuPalette, LuMusic,
+  LuVote, LuStar, LuSplit, LuHistory, LuScale, LuCrown, LuUserCog, LuWand, LuGauge, LuTable2,
 } from 'react-icons/lu';
 
 const MAP = {
+  vote: LuVote, star: LuStar, split: LuSplit, history: LuHistory, scale: LuScale, crown: LuCrown, 'user-cog': LuUserCog, wand: LuWand, gauge: LuGauge, grid: LuTable2,
   home: LuHouse, building: LuBuilding2, receipt: LuReceipt, tag: LuTag, globe: LuGlobe, users: LuUsers, id: LuIdCard,
   layers: LuLayers, check: LuCircleCheck, calendar: LuCalendarDays, book: LuBookOpen, award: LuAward, wallet: LuWallet,
   megaphone: LuMegaphone, plane: LuPlane, bus: LuBus, route: LuRoute, desk: LuConciergeBell, bed: LuBedDouble,
