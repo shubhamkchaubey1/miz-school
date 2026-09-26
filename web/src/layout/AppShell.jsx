@@ -5,7 +5,7 @@ import { MODULES, ROLES } from '../config/roles.js';
 import { DEMO_SCHOOLS } from '../data/schools.js';
 import { Crest, MizMark } from '../components/Brand.jsx';
 import Icon from '../components/Icon.jsx';
-import { Avatar, ago } from '../components/ui.jsx';
+import { Avatar, ago, toneOf } from '../components/ui.jsx';
 
 function useOutside(ref, fn) {
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function AppShell({ module, children }) {
                 <div className="upper">{group}</div>
                 {items.map((k) => (
                   <button key={k} className={`sb-link ${module === k ? 'active' : ''}`} onClick={() => go(k)} aria-current={module === k ? 'page' : undefined}>
-                    <Icon name={MODULES[k].icon} size={17} />
+                    <span className="sb-ico" style={{ color: toneOf(MODULES[k].icon)[1], background: toneOf(MODULES[k].icon)[0] }}><Icon name={MODULES[k].icon} size={15} /></span>
                     <span>{k === 'dashboard' && r.key === 'parent' ? 'Home' : MODULES[k].label}</span>
                   </button>
                 ))}
