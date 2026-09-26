@@ -6,7 +6,9 @@ import {
   LuTriangleAlert, LuIndianRupee, LuUserCheck, LuUserX, LuFilter, LuPencil, LuSend, LuPlay, LuCircleStop,
   LuNavigation, LuPackage, LuMessageSquare, LuPhoneCall, LuSchool, LuGraduationCap, LuFileText, LuUpload, LuEye,
   LuShoppingCart, LuMinus, LuTrendingUp, LuRefreshCw, LuLock, LuSmartphone, LuHeartPulse, LuBriefcase, LuScanLine,
-  LuDoorOpen, LuInbox,
+  LuDoorOpen, LuInbox, LuCalculator, LuFlaskConical, LuEarth, LuMonitor, LuLanguages, LuDumbbell, LuTrophy, LuSun,
+  LuUtensils, LuNotebookPen, LuBellRing, LuCalendarCheck, LuClipboardCheck, LuClipboardList, LuUserPlus, LuMedal,
+  LuLibrary, LuHandCoins, LuMessagesSquare, LuMapPinned, LuBadgeCheck, LuCircleAlert, LuTimer, LuPalette, LuMusic,
 } from 'react-icons/lu';
 
 const MAP = {
@@ -21,7 +23,12 @@ const MAP = {
   package: LuPackage, message: LuMessageSquare, call: LuPhoneCall, school: LuSchool, cap: LuGraduationCap,
   file: LuFileText, upload: LuUpload, eye: LuEye, cart: LuShoppingCart, minus: LuMinus, trend: LuTrendingUp,
   refresh: LuRefreshCw, lock: LuLock, phone2: LuSmartphone, health: LuHeartPulse, briefcase: LuBriefcase,
-  scan: LuScanLine, door: LuDoorOpen, inbox: LuInbox,
+  scan: LuScanLine, door: LuDoorOpen, inbox: LuInbox, calc: LuCalculator, flask: LuFlaskConical, earth: LuEarth,
+  monitor: LuMonitor, lang: LuLanguages, gym: LuDumbbell, trophy: LuTrophy, sun: LuSun, food: LuUtensils,
+  notebook: LuNotebookPen, 'bell-ring': LuBellRing, 'cal-check': LuCalendarCheck, 'clip-check': LuClipboardCheck,
+  'clip-list': LuClipboardList, 'user-plus': LuUserPlus, medal: LuMedal, library: LuLibrary, coins: LuHandCoins,
+  chat: LuMessagesSquare, 'map-pin': LuMapPinned, badge: LuBadgeCheck, 'alert-circle': LuCircleAlert, timer: LuTimer,
+  palette: LuPalette, music: LuMusic,
 };
 
 export default function Icon({ name, size = 18, ...rest }) {

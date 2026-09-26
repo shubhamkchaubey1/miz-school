@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import Icon from './Icon.jsx';
+import { MODULES } from '../config/roles.js';
 
 export const inr = (n, compact = false) => {
   if (compact) {
@@ -25,25 +26,54 @@ export const ago = (d) => {
 };
 export const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
 
-export function PageHead({ title, sub, crumbs, actions }) {
+export function PageHead({ title, sub, crumbs, actions, icon }) {
+  const mod = (window.location.hash.split('/')[4] || '').split('?')[0];
+  const ic = icon || MODULES[mod]?.icon;
   return (
     <div className="page-head">
-      <div>
-        {crumbs && <div className="crumbs">{crumbs}</div>}
-        <h1>{title}</h1>
-        {sub && <p className="sub">{sub}</p>}
+      <div className="row" style={{ gap: 14, alignItems: 'center' }}>
+        {ic && <IconTile icon={ic} size={48} iconSize={24} />}
+        <div>
+          {crumbs && <div className="crumbs">{crumbs}</div>}
+          <h1>{title}</h1>
+          {sub && <p className="sub">{sub}</p>}
+        </div>
       </div>
       {actions && <div className="row wrap">{actions}</div>}
     </div>
   );
 }
 
-export function Card({ title, action, children, footer, pad = true, className = '', style }) {
+export const TONES = {
+  blue: ['#e8f0fb', '#1d5bb5'], green: ['#e4f4ea', '#1e7b4f'], amber: ['#fff1dc', '#a15c00'], red: ['#fdeaea', '#b42318'],
+  violet: ['#efeafc', '#6a3fc2'], teal: ['#e1f4f3', '#0f7a74'], rose: ['#fce8f0', '#b3245f'], indigo: ['#e9ebfb', '#3a45b8'],
+  navy: ['#e6eaf1', '#1b2d4f'],
+};
+const ICON_TONE = {
+  users: 'blue', id: 'violet', check: 'green', 'user-check': 'green', 'user-x': 'red', wallet: 'amber', rupee: 'green',
+  calendar: 'teal', 'cal-check': 'teal', book: 'indigo', notebook: 'indigo', award: 'violet', medal: 'violet', trophy: 'amber',
+  alert: 'red', clock: 'amber', plane: 'teal', bus: 'amber', bed: 'indigo', door: 'teal', desk: 'blue', call: 'teal',
+  message: 'rose', chat: 'rose', coffee: 'amber', food: 'amber', receipt: 'navy', settings: 'navy', layers: 'indigo',
+  building: 'navy', trend: 'green', megaphone: 'rose', bell: 'rose', qr: 'navy', chart: 'blue', coins: 'green',
+  route: 'amber', shield: 'navy', tag: 'violet', globe: 'teal', home: 'blue', 'clip-check': 'green', 'user-plus': 'blue',
+  scan: 'green', package: 'amber', health: 'green', 'bell-ring': 'red', 'map-pin': 'rose', 'cal-check': 'teal', timer: 'navy',
+};
+export const toneOf = (icon, tone) => TONES[tone] || TONES[ICON_TONE[icon]] || TONES.blue;
+
+export function IconTile({ icon, tone, size = 36, iconSize }) {
+  const [bg, fg] = toneOf(icon, tone);
+  return <span className="icon-tile" style={{ width: size, height: size, background: bg, color: fg }}><Icon name={icon} size={iconSize || Math.round(size * 0.5)} /></span>;
+}
+
+export function Card({ title, icon, tone, action, children, footer, pad = true, className = '', style }) {
   return (
     <section className={`card ${className}`} style={style}>
       {(title || action) && (
         <div className="card-h">
-          {typeof title === 'string' ? <h2>{title}</h2> : title}
+          <div className="row" style={{ gap: 10, minWidth: 0 }}>
+            {icon && <IconTile icon={icon} tone={tone} size={30} />}
+            {typeof title === 'string' ? <h2>{title}</h2> : title}
+          </div>
           {action}
         </div>
       )}
@@ -54,16 +84,16 @@ export function Card({ title, action, children, footer, pad = true, className = 
 }
 
 export function Stat({ label, value, foot, icon, tone }) {
-  const toneStyle = tone === 'green' ? { background: 'var(--success-bg)', color: 'var(--success)' }
-    : tone === 'red' ? { background: 'var(--danger-bg)', color: 'var(--danger)' }
-    : tone === 'amber' ? { background: 'var(--warn-bg)', color: 'var(--warn)' } : undefined;
+  const [, fg] = toneOf(icon, tone);
   return (
-    <div className="card stat">
-      <div className="row between">
-        <span className="label">{label}</span>
-        {icon && <span className="ico" style={toneStyle}><Icon name={icon} size={16} /></span>}
+    <div className="card stat" style={{ '--tone': fg }}>
+      <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
+        {icon && <IconTile icon={icon} tone={tone} size={42} iconSize={20} />}
+        <div className="grow" style={{ minWidth: 0 }}>
+          <span className="label">{label}</span>
+          <span className="value">{value}</span>
+        </div>
       </div>
-      <span className="value">{value}</span>
       {foot && <span className="foot">{foot}</span>}
     </div>
   );
