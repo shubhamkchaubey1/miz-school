@@ -571,3 +571,16 @@ body { background: #f2f5f9; }
 .btn-primary { background: var(--brand); }
 .card-h { background: #fff; }
 .pub-nav { backdrop-filter: none; background: #fff; }
+/* plain hero label — no pill, no dot */
+.eyebrow-dark { background: none; border: 0; padding: 0; border-radius: 0; color: #f5c56b; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+/* photography */
+.hero-photo { background-color: #0b2345; background-position: center 30%; background-size: cover; background-repeat: no-repeat; position: relative; }
+.hero-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8,26,54,.96) 0%, rgba(8,26,54,.86) 45%, rgba(8,26,54,.55) 100%); pointer-events: none; }
+.hero-photo > * { position: relative; z-index: 1; }
+.day-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.day-card { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.day-img { position: relative; aspect-ratio: 16/10; background: #dfe6f0; }
+.day-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.day-time { position: absolute; left: 12px; bottom: 12px; background: #0b2345; color: #fff; font-weight: 700; font-size: 12.5px; padding: 4px 10px; border-radius: 6px; }
+.day-card figcaption { padding: 16px 18px 18px; }
+@media (max-width: 900px) { .day-grid { grid-template-columns: 1fr; } .hero-photo::after { background: rgba(8,26,54,.9); } }
