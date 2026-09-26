@@ -46,6 +46,8 @@ export const MODULES = {
   scanner: { label: 'Gate Scanner', icon: 'qr' },
   reports: { label: 'Reports', icon: 'chart' },
   permissions: { label: 'Users & Access', icon: 'shield' },
+  audit: { label: 'Audit Log', icon: 'history' },
+  backup: { label: 'Data Backup', icon: 'download' },
   settings: { label: 'School Settings', icon: 'settings' },
   notifications: { label: 'Notifications', icon: 'bell' },
 };
@@ -62,7 +64,7 @@ export const ROLES = [
       ['Finance', ['fees', 'payroll', 'inventory']],
       ['Communication', ['communication', 'notices', 'messages', 'ptm', 'calendar', 'leave']],
       ['Operations', ['transport', 'gatepass', 'hostel', 'canteen', 'health', 'reception']],
-      ['Administration', ['reports', 'permissions', 'settings']],
+      ['Administration', ['reports', 'audit', 'backup', 'permissions', 'settings']],
     ],
     bottom: ['dashboard', 'students', 'attendance', 'fees', 'communication'],
   },
@@ -70,7 +72,7 @@ export const ROLES = [
     key: 'principal', icon: 'award', label: 'Principal', person: null, title: 'Principal',
     blurb: 'School overview, smart insights, academics, staff and approvals.',
     nav: [
-      ['Overview', ['dashboard', 'insights', 'branches', 'reports', 'notifications']],
+      ['Overview', ['dashboard', 'insights', 'branches', 'reports', 'audit', 'notifications']],
       ['Academic', ['students', 'teachers', 'allocation', 'timetable', 'substitution', 'attendance', 'lessons', 'results', 'classroles', 'promotion']],
       ['Staff', ['staffatt', 'payroll']],
       ['Finance', ['fees']],
@@ -94,7 +96,7 @@ export const ROLES = [
     blurb: 'Children, attendance, homework, results, fees, bus, PTM, chat and gate pass.',
     nav: [
       ['My Children', ['dashboard', 'attendance', 'timetable', 'homework', 'results', 'classroles', 'health']],
-      ['Payments', ['fees']],
+      ['Payments & documents', ['fees', 'certificates']],
       ['Connect', ['messages', 'ptm', 'notices', 'calendar', 'leave']],
       ['Safety', ['transport', 'gatepass', 'notifications']],
     ],
@@ -167,6 +169,26 @@ export const ROLES = [
     bottom: ['dashboard', 'schools', 'subscriptions', 'plans'],
   },
 ];
+
+/**
+ * Default EDIT rights per role. Every other module in a role's menu is VIEW-only.
+ * School Admin edits everything; the admin can change any of this in Users & Access.
+ */
+export const EDIT_DEFAULT = {
+  principal: ['allocation', 'substitution', 'attendance', 'lessons', 'results', 'classroles', 'promotion', 'staffatt', 'communication', 'notices', 'calendar', 'leave', 'admissions', 'health', 'insights', 'branches', 'students', 'teachers', 'timetable', 'notifications', 'reports'],
+  teacher: ['attendance', 'lessons', 'homework', 'tests', 'results', 'classroles', 'messages', 'ptm', 'notices', 'leave', 'myclasses', 'notifications'],
+  parent: ['fees', 'messages', 'ptm', 'leave', 'gatepass', 'certificates', 'notifications'],
+  student: ['homework', 'tests', 'classroles', 'library', 'notifications'],
+  driver: ['trip', 'notifications'],
+  reception: ['admissions', 'reception', 'gatepass', 'certificates', 'notifications'],
+  accountant: ['fees', 'payroll', 'inventory', 'reports'],
+  librarian: ['library', 'notices'],
+  warden: ['hostel', 'health', 'gatepass'],
+  canteen: ['canteen'],
+  scanner: ['scanner', 'gatepass', 'attendance', 'notifications'],
+  super_admin: ['schools', 'subscriptions', 'plans', 'onboarding'],
+};
+export const LOCKED_EDIT = { school_admin: ['permissions', 'settings', 'backup', 'audit'] };
 
 export const roleByKey = (k) => ROLES.find((r) => r.key === k);
 
