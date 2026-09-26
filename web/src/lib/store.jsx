@@ -1,8 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { loadSchoolData, localSchoolData } from '../data/api.js';
 
 const LIVE = import.meta.env.VITE_LIVE_DATA === 'true';
-import { roleByKey, ROLES } from '../config/roles.js';
+import { roleByKey, ROLES, EDIT_DEFAULT, MODULES } from '../config/roles.js';
 import { todayISO } from './derive.js';
 import { autoAllocate, buildTimetable, diffAllocations, rowsByCell, cellKey } from './allocation.js';
 import { PERIODS } from '../data/generate.js';
@@ -12,8 +12,11 @@ import { todayDow } from './derive.js';
 const Ctx = createContext(null);
 export const useSchool = () => useContext(Ctx);
 
-const ACCESS_V = 2; // bump when modules are added so saved access picks them up
-export const defaultAccess = () => Object.fromEntries(ROLES.map((r) => [r.key, r.nav.flatMap(([, items]) => items)]));
+const ACCESS_V = 3; // bump when modules are added so saved access picks them up
+/** access = { role: { module: 'view' | 'edit' } } — a module missing from the map is hidden. */
+export const defaultAccess = () => Object.fromEntries(ROLES.map((r) => [r.key, Object.fromEntries(r.nav.flatMap(([, items]) => items).map((m) => [m, r.key === 'school_admin' || (EDIT_DEFAULT[r.key] || []).includes(m) ? 'edit' : 'view']))]));
+export const currentModule = () => (window.location.hash.split('/')[4] || '').split('?')[0] || null;
+const humanize = (k) => k.replace(/([A-Z])/g, ' $1').toLowerCase();
 function loadAccess() {
   try { const v = JSON.parse(localStorage.getItem('miz-access') || 'null'); if (v && v.__v === ACCESS_V) { const { __v, ...rest } = v; return { ...defaultAccess(), ...rest }; } } catch { /* storage unavailable */ }
   return defaultAccess();
@@ -46,7 +49,12 @@ export function SchoolProvider({ slug, role, children }) {
     return () => { alive = false; };
   }, [slug]);
 
+  const lvRef = useRef({ access, role });
+  lvRef.current = { access, role };
   const notify = useCallback((msg) => {
+    // on a view-only page, success toasts from blocked actions are suppressed
+    const m = currentModule();
+    if (m && lvRef.current.access[lvRef.current.role]?.[m] === 'view' && !String(msg).startsWith('View-only')) return;
     setToast(msg);
     clearTimeout(window.__mizToast);
     window.__mizToast = setTimeout(() => setToast(null), 2600);
@@ -310,6 +318,15 @@ export function SchoolProvider({ slug, role, children }) {
       return n;
     },
 
+    /* ── Backup restore (audit log is never overwritten) ── */
+    restoreData(payload, source) {
+      setData((d) => ({
+        ...d, ...payload, meta: d.meta, school: d.school,
+        audit_log: [{ id: `au-rs-${Date.now()}`, at: new Date().toISOString(), user: 'Rohit Bhatnagar', role: 'school_admin', module: 'backup', kind: 'security', action: `Restored data from ${source}. Safety backup taken first.`, device: 'Chrome · Windows', ip: '103.87.14.22' }, ...(d.audit_log || [])],
+        backups: [{ id: `bk-safe-${Date.now()}`, at: new Date().toISOString(), kind: 'Safety (before restore)', size_mb: 37.4, status: 'verified', location: 'Mumbai (ap-south-1) + Hyderabad copy', by: 'System' }, ...(d.backups || [])],
+      }));
+    },
+
     /* ── Class representatives & elections ── */
     setStudentRole(roleRow, { notifyParent = true } = {}) {
       setData((d) => {
@@ -362,6 +379,69 @@ export function SchoolProvider({ slug, role, children }) {
     },
   }), [update, push]);
 
-  const value = { access, setAccess, slug, role, data, idx, persona, actions, notify, toast, error, childIdx, setChildIdx, trip, setTrip };
+  // ── Access levels + audit trail for every action ──
+  const level = useCallback((m, r = role) => (m === 'dashboard' ? 'edit' : access[r]?.[m] || null), [access, role]);
+  const ref = useRef({});
+  ref.current = { level, persona, role, data, notify };
+  const logAudit = useCallback((entry) => {
+    const p = ref.current.persona;
+    setData((d) => (d ? { ...d, audit_log: [{ id: `au-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, at: new Date().toISOString(), user: p?.name || 'System', role: ref.current.role, device: 'Chrome · Windows', ip: '103.87.14.22', kind: 'change', ...entry }, ...(d.audit_log || [])] } : d));
+  }, []);
+  const guarded = useMemo(() => {
+    const out = { logAudit };
+    Object.entries(actions).forEach(([k, fn]) => {
+      out[k] = (...args) => {
+        const mod = currentModule();
+        const { level: lv, notify: nt, data: d } = ref.current;
+        if (mod && lv(mod) === 'view') {
+          nt('View-only access — ask the school admin for edit rights');
+          logAudit({ module: mod, action: `Blocked: tried to ${humanize(k)} with view-only access`, kind: 'security' });
+          return undefined;
+        }
+        const res = fn(...args);
+        let text;
+        try { text = describe(k, args, d); } catch { text = humanize(k); }
+        if (text) logAudit({ module: mod || 'dashboard', action: text });
+        return res;
+      };
+    });
+    return out;
+  }, [actions, logAudit]);
+
+  const value = { access, setAccess, level, slug, role, data, idx, persona, actions: guarded, notify, toast, error, childIdx, setChildIdx, trip, setTrip };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/** Human-readable audit text for each action. */
+function describe(k, a, d) {
+  const sec = (id) => d.sections.find((x) => x.id === id)?.name;
+  const stu = (id) => d.students.find((x) => x.id === id)?.full_name;
+  const tch = (id) => d.teachers.find((x) => x.id === id)?.full_name;
+  const sub = (id) => d.subjects.find((x) => x.id === id)?.name;
+  const inv = (id) => d.fee_invoices.find((x) => x.id === id);
+  switch (k) {
+    case 'saveAttendance': return `Marked attendance · Class ${sec(a[0])} · ${a[1]}`;
+    case 'markStudent': return `Changed attendance of ${stu(a[0])} to ${a[1]}`;
+    case 'payInvoice': { const f = inv(a[0]); return `Fee received · ${stu(f?.student_id)} · ₹${Number(f?.amount).toLocaleString('en-IN')} · ${a[1] || 'UPI'}`; }
+    case 'addNotice': return `Published notice “${a[0].title}”`;
+    case 'addHomework': return `Posted homework · Class ${sec(a[0].section_id)} · ${sub(a[0].subject_id)}`;
+    case 'addLeave': return `Leave request · ${a[0].requester}`;
+    case 'setLeave': return `Leave ${a[1]}`;
+    case 'saveMarks': return `Saved marks · ${sub(a[1])} · ${Object.keys(a[2] || {}).length} students changed`;
+    case 'setBranding': return 'Changed school branding';
+    case 'allocSetCell': return `Allocation draft · Class ${sec(a[0])} ${a[1]} → ${a[2].map((e) => tch(e.teacher_id)).filter(Boolean).join(' + ') || 'nobody'}`;
+    case 'allocPublish': return `Published teacher allocation (effective ${a[0].effective_from})`;
+    case 'allocAuto': return `Auto-suggested allocation (${a[0] === 'empty' ? 'empty cells' : 'all'})`;
+    case 'setClassTeacher': return `Class teacher change · Class ${sec(a[0])}`;
+    case 'markStaff': return `Staff attendance · ${tch(a[0])} → ${a[1]}`;
+    case 'assignSub': return `Substitute · ${a[2] === 'library' ? 'library self-study' : tch(a[1])}`;
+    case 'autoAssignSubs': return 'Auto-assigned substitutes';
+    case 'setStudentRole': return `${a[0].role} · ${stu(a[0].student_id)}`;
+    case 'vote': return 'Voted in class election (ballot is secret)';
+    case 'closeElection': return 'Declared class election result';
+    case 'restoreData': return null;
+    case 'push': return `Sent notification “${a[1]}” to ${[].concat(a[0]).join(', ')}`;
+    case 'update': return `Updated ${String(a[0]).replace(/_/g, ' ')}`;
+    default: return humanize(k).replace(/^./, (c) => c.toUpperCase());
+  }
 }
