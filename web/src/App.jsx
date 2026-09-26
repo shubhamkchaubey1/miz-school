@@ -6,6 +6,7 @@ import AppShell from './layout/AppShell.jsx';
 import Landing from './pages/public/Landing.jsx';
 import DemoSelect from './pages/public/DemoSelect.jsx';
 import Pricing from './pages/public/Pricing.jsx';
+import Features from './pages/public/Features.jsx';
 import Login from './pages/public/Login.jsx';
 import { MODULE_PAGES } from './pages/modules/index.js';
 import { Crest } from './components/Brand.jsx';
@@ -25,11 +26,12 @@ export default function App() {
   }
   if (route.page === 'demo') return <DemoSelect />;
   if (route.page === 'pricing') return <Pricing />;
+  if (route.page === 'features') return <Features />;
   return <Landing />;
 }
 
 function SchoolApp({ module }) {
-  const { data, persona, error } = useSchool();
+  const { data, persona, error, access, role } = useSchool();
   if (error) return <div className="empty">Could not load school data: {String(error.message || error)}</div>;
   if (!data || !persona) {
     return (
@@ -41,7 +43,7 @@ function SchoolApp({ module }) {
       </div>
     );
   }
-  const allowed = persona.role.nav.some(([, items]) => items.includes(module));
+  const allowed = (access[role] || []).includes(module);
   const key = allowed ? module : 'dashboard';
   const Page = MODULE_PAGES[key] || MODULE_PAGES.dashboard;
   return (
