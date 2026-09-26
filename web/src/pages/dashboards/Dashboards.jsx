@@ -7,10 +7,11 @@ import { Welcome, QuickActions, TodaySchedule, NoticesCard, PeriodList, useGo } 
 import { PLATFORM_TENANTS, PLANS } from '../../data/api.js';
 import { DEMO_SCHOOLS } from '../../data/schools.js';
 import { Crest } from '../../components/Brand.jsx';
+import { AccountantDash, LibrarianDash } from '../modules/Smart2.jsx';
 
 export default function Dashboard() {
   const { role } = useSchool();
-  const map = { school_admin: AdminDash, principal: PrincipalDash, teacher: TeacherDash, parent: ParentDash, student: StudentDash, driver: DriverDash, reception: ReceptionDash, warden: WardenDash, canteen: CanteenDash, scanner: ScannerDash, super_admin: SuperDash };
+  const map = { accountant: AccountantHome, librarian: LibrarianHome, school_admin: AdminDash, principal: PrincipalDash, teacher: TeacherDash, parent: ParentDash, student: StudentDash, driver: DriverDash, reception: ReceptionDash, warden: WardenDash, canteen: CanteenDash, scanner: ScannerDash, super_admin: SuperDash };
   const C = map[role] || AdminDash;
   return <C />;
 }
@@ -452,4 +453,13 @@ function SuperDash() {
       </div>
     </div>
   );
+}
+
+function AccountantHome() {
+  const { persona } = useSchool(); const go = useGo();
+  return (<div><Welcome name={persona.name} sub="Accounts office" actions={<><button className="btn" onClick={() => go('reports')}><Icon name="chart" size={16} /> Reports</button><button className="btn btn-primary" onClick={() => go('fees')}><Icon name="coins" size={16} /> Collect fee</button></>} /><AccountantDash /></div>);
+}
+function LibrarianHome() {
+  const { persona } = useSchool(); const go = useGo();
+  return (<div><Welcome name={persona.name} sub="School library" actions={<button className="btn btn-primary" onClick={() => go('library')}><Icon name="scan" size={16} /> Issue / return</button>} /><LibrarianDash /></div>);
 }
