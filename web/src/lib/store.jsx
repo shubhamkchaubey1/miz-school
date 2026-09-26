@@ -95,10 +95,22 @@ export function SchoolProvider({ slug, role, children }) {
 
   // ── Demo mutations (session only; production writes go through the Node API) ──
   const update = useCallback((key, fn) => setData((d) => ({ ...d, [key]: fn(d[key]) })), []);
+  /** Every event fans out as an in-app notification + WhatsApp/SMS/email log entry. */
+  const push = useCallback((audiences, title, body, kind, channels = ['push', 'whatsapp']) => {
+    const at = new Date().toISOString();
+    setData((d) => ({
+      ...d,
+      notifications: [...audiences.map((a, i) => ({ id: `nt-${Date.now()}-${i}`, audience: a, title, body, kind, created_at: at })), ...d.notifications],
+      comm_logs: [...channels.map((c, i) => ({ id: `cl-${Date.now()}-${i}`, at, channel: c, template: title, to: audiences.join(', '), status: 'sent' })), ...(d.comm_logs || [])],
+    }));
+  }, []);
   const actions = useMemo(() => ({
+    push,
     /** Generic session-only update for any table: actions.update('books', rows => ...) */
     update,
     saveAttendance(sectionId, date, marks) {
+      const absent = Object.values(marks).filter((x) => x === 'absent').length;
+      if (absent) push(['parent', 'school_admin'], `${absent} student${absent > 1 ? 's' : ''} marked absent`, 'Parents alerted on WhatsApp and SMS.', 'attendance', ['whatsapp', 'sms', 'push']);
       update('attendance', (rows) => {
         const rest = rows.filter((a) => !(a.section_id === sectionId && a.date === date));
         return [...rest, ...Object.entries(marks).map(([student_id, status]) => ({ id: `${student_id}-${date}`, student_id, section_id: sectionId, date, status }))];
@@ -113,12 +125,13 @@ export function SchoolProvider({ slug, role, children }) {
       });
     },
     payInvoice(id, method = 'UPI') {
+      push(['parent', 'accountant', 'school_admin'], 'Fee payment received', `Paid via ${method}. Receipt sent by email.`, 'fees', ['push', 'email', 'whatsapp']);
       update('fee_invoices', (rows) => rows.map((f) => (f.id === id ? { ...f, status: 'paid', paid_on: todayISO(), method, receipt_no: `RCPT-${Math.floor(90000 + Math.random() * 9999)}` } : f)));
     },
-    addNotice(n) { update('notices', (rows) => [{ id: `n-${Date.now()}`, published_at: new Date().toISOString(), priority: 'normal', ...n }, ...rows]); },
-    addHomework(h) { update('homework', (rows) => [{ id: `hw-${Date.now()}`, assigned_on: todayISO(), ...h }, ...rows]); },
-    addLeave(l) { update('leave_requests', (rows) => [{ id: `lv-${Date.now()}`, status: 'pending', ...l }, ...rows]); },
-    setLeave(id, status) { update('leave_requests', (rows) => rows.map((l) => (l.id === id ? { ...l, status } : l))); },
+    addNotice(n) { push(['all'], n.title, n.body?.slice(0, 90), 'notice', ['push', 'whatsapp', 'email']); update('notices', (rows) => [{ id: `n-${Date.now()}`, published_at: new Date().toISOString(), priority: 'normal', ...n }, ...rows]); },
+    addHomework(h) { push(['parent', 'student'], 'New homework added', `${h.title} — due ${h.due_on}`, 'homework', ['push']); update('homework', (rows) => [{ id: `hw-${Date.now()}`, assigned_on: todayISO(), ...h }, ...rows]); },
+    addLeave(l) { push(['teacher'], 'New leave request', `${l.requester}: ${l.reason}`, 'leave', ['push']); update('leave_requests', (rows) => [{ id: `lv-${Date.now()}`, status: 'pending', ...l }, ...rows]); },
+    setLeave(id, status) { push(['parent'], `Leave ${status}`, 'Your leave request was reviewed by the class teacher.', 'leave', ['push', 'whatsapp']); update('leave_requests', (rows) => rows.map((l) => (l.id === id ? { ...l, status } : l))); },
     addVisitor(v) { update('visitors', (rows) => [{ id: `v-${Date.now()}`, check_in: new Date().toISOString(), check_out: null, status: 'inside', badge_no: `V-${120 + rows.length}`, ...v }, ...rows]); },
     checkoutVisitor(id) { update('visitors', (rows) => rows.map((v) => (v.id === id ? { ...v, status: 'checked_out', check_out: new Date().toISOString() } : v))); },
     addEnquiry(e) { update('admission_enquiries', (rows) => [{ id: `e-${Date.now()}`, created_at: new Date().toISOString(), status: 'new', ...e }, ...rows]); },
@@ -129,10 +142,11 @@ export function SchoolProvider({ slug, role, children }) {
     },
     restock(id, qty) { update('canteen_items', (rows) => rows.map((it) => (it.id === id ? { ...it, stock: it.stock + qty } : it))); },
     saveMarks(examId, subjectId, values) {
+      push(['principal'], 'Marks entered', 'A teacher saved marks — ready for review before publishing.', 'notice', ['push']);
       update('marks', (rows) => rows.map((m) => (m.exam_id === examId && m.subject_id === subjectId && values[m.student_id] != null ? { ...m, marks_obtained: values[m.student_id] } : m)));
     },
     setBranding(patch) { setData((d) => { const school = { ...d.school, ...patch }; applyBrand(school); return { ...d, school }; }); },
-  }), [update]);
+  }), [update, push]);
 
   const value = { access, setAccess, slug, role, data, idx, persona, actions, notify, toast, error, childIdx, setChildIdx, trip, setTrip };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
