@@ -1,3 +1,4 @@
+import { generateExtra } from './extra.js';
 // Deterministic demo-data generator. Produces the exact same row shapes as the
 // Supabase tables in /supabase/migrations, so screens work identically on
 // local demo data and on live Supabase data.
@@ -386,10 +387,11 @@ export function generateSchoolData(school) {
     { id: `${school.slug}-lv-4`, requester: students[70].full_name, requester_type: 'student', section_id: students[70].section_id, from_date: iso(addDays(today, -6)), to_date: iso(addDays(today, -5)), reason: 'Fever', status: 'approved' },
   ];
 
-  return {
+  const base = {
     school, subjects, teachers, sections, students, attendance, timetable_slots, homework, exams, marks,
     fee_invoices, notices, notifications, school_events, vehicles, routes, route_stops, hostels, rooms,
     canteen_items, canteen_sales, admission_enquiries, visitors, phone_logs, postal_items, complaints,
     leave_requests, meta: { demoParentStudentIds: [kidA.id, kidB.id], demoStudentId: kidA.id, source: 'local' },
   };
+  return { ...base, ...generateExtra(base) };
 }
