@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { loadSchoolData } from '../data/api.js';
+import { loadSchoolData, localSchoolData } from '../data/api.js';
+
+const LIVE = import.meta.env.VITE_LIVE_DATA === 'true';
 import { roleByKey } from '../config/roles.js';
 import { todayISO } from './derive.js';
 
@@ -17,7 +19,7 @@ export function applyBrand(school) {
 }
 
 export function SchoolProvider({ slug, role, children }) {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(() => (LIVE ? null : localSchoolData(slug)));
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [childIdx, setChildIdx] = useState(0);
@@ -25,6 +27,7 @@ export function SchoolProvider({ slug, role, children }) {
 
   useEffect(() => {
     let alive = true;
+    if (!LIVE) { const d = localSchoolData(slug); setData(d); applyBrand(d.school); return () => {}; }
     setData(null);
     loadSchoolData(slug).then((d) => { if (alive) { setData(d); applyBrand(d.school); } }).catch((e) => setError(e));
     return () => { alive = false; };
@@ -52,7 +55,9 @@ export function SchoolProvider({ slug, role, children }) {
     data.attendance.forEach((a) => { if (a.date === today) attToday[a.student_id] = a.status; });
     const studentsBySection = {};
     data.students.forEach((s) => { (studentsBySection[s.section_id] ||= []).push(s); });
-    return { students, sections, teachers, subjects, routes, stops, rooms, hostels, dates, today, attToday, studentsBySection };
+    const marksByStudent = {};
+    data.marks.forEach((m) => { (marksByStudent[m.student_id] ||= []).push(m); });
+    return { students, sections, teachers, subjects, routes, stops, rooms, hostels, dates, today, attToday, studentsBySection, marksByStudent };
   }, [data]);
 
   const persona = useMemo(() => {

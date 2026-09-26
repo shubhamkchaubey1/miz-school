@@ -54,7 +54,7 @@ export function collectionByMonth(invoices) {
 export const grade = (p) => (p >= 91 ? 'A1' : p >= 81 ? 'A2' : p >= 71 ? 'B1' : p >= 61 ? 'B2' : p >= 51 ? 'C1' : p >= 41 ? 'C2' : p >= 33 ? 'D' : 'E');
 
 export function reportCard(data, idx, studentId, examId) {
-  const rows = data.marks.filter((m) => m.student_id === studentId && m.exam_id === examId)
+  const rows = (idx.marksByStudent?.[studentId] || data.marks.filter((m) => m.student_id === studentId)).filter((m) => m.exam_id === examId)
     .map((m) => ({ ...m, subject: idx.subjects[m.subject_id], pct: (Number(m.marks_obtained) / m.max_marks) * 100 }))
     .sort((a, b) => (a.subject?.code || '').localeCompare(b.subject?.code || ''));
   const total = rows.reduce((s, r) => s + Number(r.marks_obtained), 0);
