@@ -9,9 +9,9 @@ const TABLES = [
 ];
 
 export const PLANS = [
-  { id: 'basic', name: 'Basic', price_per_user: 60, gst_rate: 18, minimum_users: 200, features: ['Attendance', 'Timetable', 'Homework', 'Notices', 'Fees'] },
-  { id: 'standard', name: 'Standard', price_per_user: 100, gst_rate: 18, minimum_users: 300, features: ['Everything in Basic', 'Exams & results', 'Transport', 'Reception desk', 'Parent & student apps'] },
-  { id: 'premium', name: 'Premium', price_per_user: 140, gst_rate: 18, minimum_users: 500, features: ['Everything in Standard', 'Hostel & canteen', 'Payroll', 'Custom domain', 'Priority support'] },
+  { id: 'basic', name: 'Basic', minimum_users: 200, features: ['Attendance', 'Timetable', 'Homework', 'Notices', 'Fees'] },
+  { id: 'standard', name: 'Standard', minimum_users: 300, features: ['Everything in Basic', 'Exams & results', 'Transport', 'Reception desk', 'Parent & student apps'] },
+  { id: 'premium', name: 'Premium', minimum_users: 500, features: ['Everything in Standard', 'Hostel & canteen', 'Payroll', 'Custom domain', 'Priority support'] },
 ];
 
 // Platform view (Super Admin) — demo tenants + a few illustrative pipeline tenants.
